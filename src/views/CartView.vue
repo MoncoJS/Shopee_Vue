@@ -1,31 +1,31 @@
 <template>
-  <div class="flex flex-col items-center justify-center min-h-screen bg-base-200 p-4">
-    <div class="w-full max-w-2xl bg-white p-8 rounded-xl shadow-lg">
-      <h2 class="text-2xl font-bold mb-6 text-center text-primary">ตะกร้าสินค้า</h2>
+  <div class="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-green-50 p-4">
+    <div class="w-full max-w-2xl bg-white p-8 rounded-2xl shadow-2xl border border-gray-100">
+      <h2 class="text-3xl font-bold mb-6 text-center text-primary">🛒 ตะกร้าสินค้า</h2>
       <div v-if="loading" class="text-lg text-center">Loading...</div>
       <div v-if="errorMessage" class="text-red-500 mb-4 text-center">{{ errorMessage }}</div>
       <div v-else>
         <div class="overflow-x-auto">
-          <table class="table w-full mb-4">
-            <thead class="bg-base-200">
+          <table class="table w-full mb-4 rounded-xl overflow-hidden">
+            <thead class="bg-gradient-to-r from-green-100 to-blue-100">
               <tr>
-                <th>ชื่อสินค้า</th>
-                <th>จำนวน</th>
-                <th>ราคา/ชิ้น</th>
-                <th>รวม</th>
+                <th class="text-base font-semibold">ชื่อสินค้า</th>
+                <th class="text-base font-semibold">จำนวน</th>
+                <th class="text-base font-semibold">ราคา/ชิ้น</th>
+                <th class="text-base font-semibold">รวม</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in mergedItems" :key="getItemId(item)">
-                <td>{{ getProductInfo(item.product).name }}</td>
-                <td>{{ item.quantity }}</td>
-                <td>{{ item.price }}</td>
-                <td>{{ item.price * item.quantity }}</td>
+              <tr v-for="item in mergedItems" :key="getItemId(item)" class="hover:bg-green-50 transition-colors">
+                <td class="py-2">{{ getProductInfo(item.product).name }}</td>
+                <td class="py-2">{{ item.quantity }}</td>
+                <td class="py-2">{{ item.price }}</td>
+                <td class="py-2">{{ item.price * item.quantity }}</td>
               </tr>
             </tbody>
           </table>
         </div>
-        <div class="text-right font-bold text-lg mt-4">
+        <div class="text-right font-bold text-xl mt-4">
           รวมทั้งหมด: <span class="text-green-600">{{ totalPrice }}</span> บาท
         </div>
       </div>
@@ -118,3 +118,23 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.table th, .table td {
+  text-align: center;
+  vertical-align: middle;
+}
+.table {
+  border-radius: 1rem;
+  overflow: hidden;
+}
+@media (max-width: 600px) {
+  .w-full.max-w-2xl {
+    padding: 1rem;
+  }
+  .table th, .table td {
+    font-size: 0.95rem;
+    padding: 0.3rem;
+  }
+}
+</style>

@@ -12,8 +12,7 @@
             <div class="dropdown dropdown-end">
                 <label tabindex="0" class="btn btn-ghost flex items-center gap-2 cursor-pointer">
                     <span class="font-bold">👤</span>
-                    <span v-if="cart && cart.customerName">{{ cart.customerName }}</span>
-                    <span v-else>Guest</span>
+                    <span>{{ customerName || 'Guest' }}</span>
                     <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path>
                     </svg>
@@ -43,10 +42,23 @@ export default {
             cart: { customerName: '' }
         }
     },
+    computed: {
+        customerName() {
+            // ดึงชื่อจาก token ทุกครั้งที่ render
+            const token = localStorage.getItem('token')
+            if (token) {
+                try {
+                    const payload = JSON.parse(atob(token.split('.')[1]))
+                    return payload.firstName || payload.username || ''
+                } catch (e) {
+                    return ''
+                }
+            }
+            return ''
+        }
+    },
     mounted() {
         window.addEventListener('storage', this.syncLoginState)
-        // ดึงชื่อผู้ใช้จาก token (ถ้ามี)
-        this.setCustomerName()
     },
     beforeDestroy() {
         window.removeEventListener('storage', this.syncLoginState)
@@ -55,31 +67,15 @@ export default {
         logout() {
             localStorage.removeItem('token')
             this.isLoggedIn = false
-            this.cart.customerName = ''
             this.$router.push('/login')
         },
         syncLoginState() {
             this.isLoggedIn = !!localStorage.getItem('token')
-            this.setCustomerName()
-        },
-        setCustomerName() {
-            const token = localStorage.getItem('token')
-            if (token) {
-                try {
-                    const payload = JSON.parse(atob(token.split('.')[1]))
-                    this.cart.customerName = payload.firstName || payload.username || ''
-                } catch (e) {
-                    this.cart.customerName = ''
-                }
-            } else {
-                this.cart.customerName = ''
-            }
         }
     },
     watch: {
         '$route'() {
             this.isLoggedIn = !!localStorage.getItem('token')
-            this.setCustomerName()
         }
     }
 }
