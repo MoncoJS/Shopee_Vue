@@ -1,9 +1,12 @@
 <template>
-    <div class="flex flex-col items-center justify-center min-h-screen bg-base-200">
-        <div class="w-full max-w-xs bg-white p-8 rounded shadow">
-            <h2 class="text-2xl font-bold mb-6 text-center">Login</h2>
-            <form @submit.prevent="handleLogin">
-                <div class="mb-4">
+    <div class="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-blue-100 to-green-100">
+        <div class="w-full max-w-sm bg-white p-10 rounded-3xl shadow-2xl border border-gray-100 flex flex-col items-center">
+            <div class="mb-4">
+                <span class="text-5xl text-green-400">🔐</span>
+            </div>
+            <h2 class="text-3xl font-extrabold mb-8 text-center text-green-700 tracking-tight">เข้าสู่ระบบ</h2>
+            <form @submit.prevent="handleLogin" class="w-full">
+                <div class="mb-5">
                     <label class="block text-gray-700 text-sm font-bold mb-2" for="username">
                         Username
                     </label>
@@ -17,8 +20,9 @@
                     <input id="password" type="password" class="input input-bordered w-full"
                         placeholder="Enter your password" v-model="password" />
                 </div>
-                <div v-if="errorMessage" class="text-red-500 mb-4 text-center">{{ errorMessage }}</div>
-                <button type="submit" class="btn btn-primary w-full">
+                <div v-if="errorMessage" class="text-red-500 mb-4 text-center font-medium">{{ errorMessage }}</div>
+                <button type="submit"
+                    class="btn w-full rounded-xl bg-gradient-to-r from-green-400 to-blue-400 text-white font-semibold text-lg shadow-lg hover:from-blue-400 hover:to-green-400 transition-all">
                     Login
                 </button>
             </form>

@@ -1,39 +1,43 @@
 <template>
-  <div class="flex flex-col min-h-screen bg-gradient-to-br from-blue-50 to-green-50 p-6">
-    <div v-if="loading" class="text-lg text-center mt-10">Loading...</div>
-    <div v-if="errorMessage" class="text-red-500 mb-4 text-center">
-      {{ errorMessage }}
-    </div>
-    <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ">
-      <div v-for="product in products" :key="product._id"
-        class="card w-full max-w-xs bg-white shadow-xl hover:shadow-2xl transition-shadow duration-200 mx-auto border border-gray-100 rounded-2xl">
-        <div class="card-body flex flex-col">
-          <h2 class="card-title text-2xl mb-2 text-primary font-bold">
-            {{ product.product_name }}
-          </h2>
-          <p v-if="product.description" class="mb-2 text-gray-600">
-            {{ product.description }}
-          </p>
-          <p class="mb-2">
-            ราคา:
-            <span class="font-bold text-green-600 text-lg">{{
-              product.price
-            }}</span>
-            บาท
-          </p>
-          <p class="mb-2">
-            จำนวน: <span class="font-semibold">{{ product.amount }}</span>
-          </p>
-          <div class="mb-2 flex items-center">
-            <label class="mr-2 text-nowrap">จำนวนสั่ง:</label>
-            <input type="number" min="1" :max="product.amount" v-model.number="quantities[product._id]"
-              class="input input-bordered w-18" />
+  <div class="min-h-screen bg-gradient-to-br from-blue-100 to-green-100 flex flex-col">
+    <header class="w-full py-8 bg-white shadow-md mb-8">
+      <h1 class="text-4xl font-extrabold text-center text-green-700 tracking-tight drop-shadow">
+        สินค้าทั้งหมด
+      </h1>
+    </header>
+    <div class="flex-1 container mx-auto px-4">
+      <div v-if="loading" class="text-xl text-center mt-20 font-semibold text-blue-700 animate-pulse">Loading...</div>
+      <div v-if="errorMessage" class="text-red-500 mb-6 text-center text-lg font-medium">
+        {{ errorMessage }}
+      </div>
+      <div v-else class="grid gap-8 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <div v-for="product in products" :key="product._id"
+          class="bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-200 border border-gray-200 flex flex-col overflow-hidden group">
+          <div class="bg-gradient-to-tr from-green-100 to-blue-100 h-32 flex items-center justify-center">
+            <span class="text-5xl text-green-400 group-hover:scale-110 transition-transform">🛍️</span>
           </div>
-          <button
-            class="btn btn-success mt-2 w-full rounded-lg text-lg font-semibold shadow hover:scale-105 transition-transform duration-150"
-            @click="addToCart(product)">
-            เพิ่มลงตะกร้า
-          </button>
+          <div class="flex-1 flex flex-col p-6">
+            <h2 class="text-xl font-bold mb-2 text-green-700 group-hover:text-blue-700 transition-colors">
+              {{ product.product_name }}
+            </h2>
+            <p v-if="product.description" class="mb-2 text-gray-500 text-sm">
+              {{ product.description }}
+            </p>
+            <div class="flex flex-col gap-1 mb-2">
+              <span class="text-gray-700">ราคา: <span class="font-bold text-green-600 text-lg">{{ product.price }}</span> บาท</span>
+              <span class="text-gray-700">จำนวนคงเหลือ: <span class="font-semibold">{{ product.amount }}</span></span>
+            </div>
+            <div class="flex items-center gap-2 mb-4">
+              <label class="text-gray-600 text-sm text-nowrap">จำนวนสั่ง:</label>
+              <input type="number" min="1" :max="product.amount" v-model.number="quantities[product._id]"
+                class="input input-bordered w-20 text-center" />
+            </div>
+            <button
+              class="mt-auto btn w-full rounded-xl bg-gradient-to-r from-green-400 to-blue-400 text-white font-semibold text-lg shadow-lg hover:from-blue-400 hover:to-green-400 transition-all"
+              @click="addToCart(product)">
+              เพิ่มลงตะกร้า
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -118,34 +122,20 @@ export default {
 </script>
 
 <style scoped>
-.card {
-  border-radius: 1.5rem;
-  border: 1px solid #e5e7eb;
-  transition: box-shadow 0.2s, transform 0.15s;
-  background: linear-gradient(135deg, #fff 80%, #f0fdf4 100%);
+.container {
+  max-width: 1200px;
 }
-
-.card:hover {
-  box-shadow: 0 8px 32px 0 rgba(60, 60, 60, 0.18);
-  transform: translateY(-4px) scale(1.03);
-}
-
-.card-title {
-  letter-spacing: 0.02em;
-}
-
-.input-bordered {
-  border-radius: 0.5rem;
-}
-
-.btn-success {
-  background: linear-gradient(90deg, #22d3ee 0%, #16a34a 100%);
-  color: #fff;
+.btn {
+  padding: 0.75rem 1.5rem;
+  font-size: 1.1rem;
   border: none;
+  outline: none;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
 }
-
-.btn-success:hover {
-  background: linear-gradient(90deg, #16a34a 0%, #22d3ee 100%);
-  color: #fff;
+.input-bordered {
+  border-radius: 0.75rem;
+  border: 1px solid #d1d5db;
+  padding: 0.4rem 0.7rem;
 }
 </style>
