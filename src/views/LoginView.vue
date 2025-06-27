@@ -35,7 +35,7 @@
 
 <script>
 import "@/styles/login_register.css"
-import axios from 'axios'
+import api from '@/services/api'
 
 export default {
     data() {
@@ -50,7 +50,7 @@ export default {
             // ฟังก์ชันสำหรับ login
             this.errorMessage = ''
             try {
-                const response = await axios.post('http://localhost:3000/login', {
+                const response = await api.post('/login', {
                     username: this.username,
                     password: this.password
                 })

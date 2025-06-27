@@ -1,37 +1,23 @@
-import axios from 'axios';
-
-const API_URL = 'http://localhost:3000/coupons';
-
-const getToken = () => {
-  return localStorage.getItem('token');
-};
-
-const getAuthHeaders = () => {
-  const token = getToken();
-  if (token) {
-    return { Authorization: `Bearer ${token}` };
-  }
-  return {};
-};
+import api from './api';
 
 export default {
   createCoupon(couponData) {
-    return axios.post(API_URL, couponData, { headers: getAuthHeaders() });
+    return api.post('/coupons', couponData);
   },
 
   getAllCoupons() {
-    return axios.get(API_URL, { headers: getAuthHeaders() });
+    return api.get('/coupons');
   },
 
   getCouponByCode(code) {
-    return axios.get(`${API_URL}/code/${code}`);
+    return api.get(`/coupons/code/${code}`);
   },
 
   updateCoupon(id, couponData) {
-    return axios.put(`${API_URL}/${id}`, couponData, { headers: getAuthHeaders() });
+    return api.put(`/coupons/${id}`, couponData);
   },
 
   deleteCoupon(id) {
-    return axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
+    return api.delete(`/coupons/${id}`);
   },
 };

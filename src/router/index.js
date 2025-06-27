@@ -79,15 +79,18 @@ router.beforeEach((to, from, next) => {
   if (isAuthenticated) {
     try {
       const payload = JSON.parse(atob(token.split(".")[1]));
+      console.log("Token payload:", payload);
       if (payload.role === "admin") {
         isAdmin = true;
       }
     } catch (e) {
-      // console.error("Error decoding token:", e);
+      console.error("Error decoding token or token invalid:", e);
       isAuthenticated = false; // Invalidate token if decoding fails
       localStorage.removeItem("token");
     }
   }
+
+  console.log("Navigating to:", to.path, "Requires Admin:", to.matched.some(record => record.meta.requiresAdmin), "Is Admin:", isAdmin);
 
   if (to.matched.some(record => record.meta.requiresAuth) && !isAuthenticated) {
     next({ name: "login" });

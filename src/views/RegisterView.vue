@@ -30,6 +30,7 @@
 
 <script>
 import "@/styles/login_register.css"
+import api from '@/services/api'
 export default {
   name: "RegisterView",
   data() {
@@ -51,24 +52,14 @@ export default {
         return;
       }
       try {
-        const res = await fetch("http://localhost:3000/users/", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          mode: "cors",
-          body: JSON.stringify(this.form)
-        });
-        if (res.status === 401) {
-          this.errorMessage = "ไม่สามารถสมัครสมาชิกได้ กรุณาติดต่อผู้ดูแลระบบ";
-          return;
-        }
-        const data = await res.json();
-        if (!data.success) {
-          this.errorMessage = data.message || "สมัครสมาชิกไม่สำเร็จ";
-        } else {
+        const response = await api.post('/users/', this.form);
+        if (response.data.success) {
           this.$router.push("/login");
+        } else {
+          this.errorMessage = response.data.message || "สมัครสมาชิกไม่สำเร็จ";
         }
-      } catch (e) {
-        this.errorMessage = "เกิดข้อผิดพลาดในการสมัครสมาชิก";
+      } catch (error) {
+        this.errorMessage = error.response?.data?.message || "เกิดข้อผิดพลาดในการสมัครสมาชิก";
       }
     }
   }

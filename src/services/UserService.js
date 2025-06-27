@@ -1,29 +1,15 @@
-import axios from 'axios';
-
-const API_URL = 'http://localhost:3000/users';
-
-const getToken = () => {
-  return localStorage.getItem('token');
-};
-
-const getAuthHeaders = () => {
-  const token = getToken();
-  if (token) {
-    return { Authorization: `Bearer ${token}` };
-  }
-  return {};
-};
+import api from './api';
 
 export default {
   getUsers() {
-    return axios.get(API_URL, { headers: getAuthHeaders() });
+    return api.get('/users');
   },
 
   updateUser(id, userData) {
-    return axios.put(`${API_URL}/${id}`, userData, { headers: getAuthHeaders() });
+    return api.put(`/users/${id}`, userData);
   },
 
   deleteUser(id) {
-    return axios.delete(`${API_URL}/${id}`, { headers: getAuthHeaders() });
+    return api.delete(`/users/${id}`);
   }
 };

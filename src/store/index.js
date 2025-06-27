@@ -1,5 +1,6 @@
 import Vue from 'vue'
 import Vuex from 'vuex'
+import api from '@/services/api' // Import the api instance
 
 Vue.use(Vuex)
 
@@ -42,11 +43,7 @@ export default new Vuex.Store({
           return;
         }
 
-        const res = await this._vm.axios.get(`http://localhost:3000/users/${userId}`, {
-          headers: {
-            "Authorization": `Bearer ${token}`
-          }
-        });
+        const res = await api.get(`/users/${userId}`); // Use api instance
 
         if (res.data.success) {
           commit('setUser', res.data.data);
