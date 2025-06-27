@@ -1,11 +1,15 @@
 <template>
   <div id="app">
     <AppNavbar />
-    <router-view />
+    <div class="main-content">
+      <router-view />
+    </div>
   </div>
 </template>
 
 <style>
+@import './styles/main.css';
+
 #app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -13,12 +17,16 @@
   text-align: center;
   color: #2c3e50;
 }
+
+/* เพิ่ม CSS สำหรับ z-0 */
+.z-0 {
+  z-index: 0;
+  position: relative;
+}
 </style>
 
 <script>
-
 import AppNavbar from '@/components/Navbar.component.vue'
-
 export default {
   name: 'HomeView',
   components: {

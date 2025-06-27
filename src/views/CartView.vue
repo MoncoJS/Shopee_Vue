@@ -1,43 +1,147 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-blue-100 to-green-100 flex flex-col">
-    <header class="w-full py-8 bg-white shadow-md mb-8">
-      <h2 class="text-4xl font-extrabold text-center text-green-700 tracking-tight drop-shadow">
+  <div class="cart-bg">
+    <header class="cart-header">
+      <h2 class="cart-title">
         🛒 ตะกร้าสินค้า
       </h2>
     </header>
-    <div class="flex-1 container mx-auto px-4 flex flex-col items-center">
-      <div class="w-full max-w-3xl bg-white p-10 rounded-3xl shadow-2xl border border-gray-100">
-        <div v-if="loading" class="text-xl text-center font-semibold text-blue-700 animate-pulse">Loading...</div>
-        <div v-if="errorMessage" class="text-red-500 mb-6 text-center text-lg font-medium">{{ errorMessage }}</div>
+    <div class="cart-content">
+      <div class="cart-container">
+        <div v-if="loading" class="cart-loading">Loading...</div>
+        <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
+        <!-- แสดง empty cart UI -->
+        <div v-else-if="mergedItems.length === 0" class="cart-empty">
+          <div style="
+            width: 110px;
+            height: 110px;
+            background: #c9e6a6;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 18px;
+            position: relative;
+          ">
+            <!-- ถุงสินค้า SVG -->
+            <svg width="60" height="60" viewBox="0 0 60 60" fill="none">
+              <circle cx="30" cy="30" r="30" fill="#c9e6a6"/>
+              <rect x="18" y="26" width="24" height="18" rx="6" fill="#F7D07A"/>
+              <path d="M24 34a6 6 0 0 0 12 0" stroke="#A3A3A3" stroke-width="2" fill="none"/>
+              <rect x="30" y="40" width="8" height="4" rx="2" fill="#B7E0C0"/>
+              <circle cx="24" cy="30" r="2" fill="#A3A3A3"/>
+              <circle cx="36" cy="30" r="2" fill="#A3A3A3"/>
+              <!-- รอยยิ้ม -->
+              <path d="M26 38 Q30 42 34 38" stroke="#A3A3A3" stroke-width="2" fill="none"/>
+            </svg>
+            <!-- Tag -->
+            <svg style="position:absolute; right:-14px; bottom:16px;" width="32" height="16" viewBox="0 0 32 16" fill="none">
+              <rect x="0" y="4" width="22" height="8" rx="3" fill="#B7E0C0"/>
+              <rect x="22" y="7" width="8" height="3" rx="1.5" fill="#F7D07A"/>
+              <circle cx="4" cy="8" r="1.2" fill="#A3A3A3"/>
+              <text x="10" y="11" font-size="6" fill="#7bbf8e">฿</text>
+            </svg>
+            <!-- Dots -->
+            <span style="position:absolute; left:-12px; top:12px; width:7px; height:7px; background:#F7D07A; border-radius:50%;"></span>
+            <span style="position:absolute; right:-7px; top:6px; width:5px; height:5px; background:#B7E0C0; border-radius:50%;"></span>
+            <span style="position:absolute; left:18px; top:-10px; width:6px; height:6px; background:#fff; opacity:0.7; border-radius:50%;"></span>
+          </div>
+          <div class="cart-empty-text">ยังไม่มีสินค้าในรถเข็น</div>
+        </div>
+        <!-- ตารางสินค้า -->
         <div v-else>
-          <div class="overflow-x-auto">
-            <table class="table w-full mb-6 rounded-xl overflow-hidden shadow">
-              <thead class="bg-gradient-to-r from-green-100 to-blue-100">
+          <div class="cart-table-wrapper">
+            <table class="table">
+              <thead>
                 <tr>
-                  <th class="text-base font-semibold py-3">ชื่อสินค้า</th>
-                  <th class="text-base font-semibold py-3">จำนวน</th>
-                  <th class="text-base font-semibold py-3">ราคา/ชิ้น</th>
-                  <th class="text-base font-semibold py-3">รวม</th>
+                  <th>รูปสินค้า</th>
+                  <th>ชื่อสินค้า</th>
+                  <th>จำนวน</th>
+                  <th>ราคา/ชิ้น</th>
+                  <th>รวม</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="item in mergedItems" :key="getItemId(item)" class="hover:bg-green-50 transition-colors">
-                  <td class="py-3">{{ getProductInfo(item.product).name }}</td>
-                  <td class="py-3">{{ item.quantity }}</td>
-                  <td class="py-3">{{ item.price }}</td>
-                  <td class="py-3">{{ item.price * item.quantity }}</td>
+                <tr v-for="item in mergedItems" :key="getItemId(item)">
+                  <td>
+                    <img
+                      v-if="getProductInfo(item.product).img"
+                      :src="getProductImg(getProductInfo(item.product).img)"
+                      :alt="getProductInfo(item.product).name || getProductInfo(item.product).product_name || 'ไม่มีชื่อสินค้า'"
+                      class="cart-img"
+                      @error="onImgError($event)"
+                      @load="onImgLoad($event)"
+                    />
+                    <span v-else class="cart-img-placeholder">
+                      🛍️
+                    </span>
+                  </td>
+                  <td>
+                    <span>{{ getProductInfo(item.product).name || getProductInfo(item.product).product_name }}</span>
+                  </td>
+                  <td>
+                    <button @click="decreaseQty(item)" class="cart-qty-btn">-</button>
+                    <span class="cart-qty">{{ item.quantity }}</span>
+                    <button @click="increaseQty(item)" class="cart-qty-btn">+</button>
+                  </td>
+                  <td>{{ formatPrice(item.price) }}</td>
+                  <td>{{ formatPrice(item.price * item.quantity) }}</td>
+                  <td>
+                    <button 
+                      @click="removeItem(item)" 
+                      :disabled="removingItems.includes(getItemId(item))"
+                      class="cart-remove-btn"
+                    >
+                      <span v-if="removingItems.includes(getItemId(item))" class="loader" style="margin-right:4px"></span>
+                      ลบ
+                    </button>
+                  </td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <div class="text-right font-bold text-2xl mt-4">
-            รวมทั้งหมด: <span class="text-green-600">{{ totalPrice }}</span> บาท
+          <div class="cart-summary">
+            <div class="coupon-section mb-4">
+              <input
+                type="text"
+                v-model="couponCode"
+                placeholder="Enter coupon code"
+                class="input input-bordered w-full max-w-xs mr-2"
+              />
+              <button @click="applyCoupon" class="btn btn-secondary">Apply Coupon</button>
+              <div v-if="appliedCoupon" class="text-green-600 mt-2">Coupon {{ appliedCoupon.code }} applied!</div>
+            </div>
+            <button 
+              @click="clearCart" 
+              :disabled="clearingCart"
+              class="btn cart-clear-btn"
+            >
+              <span v-if="clearingCart" class="loader" style="margin-right:8px"></span>
+              ล้างตะกร้า
+            </button>
+            <div class="cart-total">
+              ราคารวม: <span>{{ formatPrice(totalPrice) }}</span> บาท
+            </div>
+            <div v-if="appliedCoupon" class="cart-discount text-red-500">
+              ส่วนลด: -<span>{{ formatPrice(discountAmount) }}</span> บาท
+            </div>
+            <div v-if="appliedCoupon" class="cart-final-total font-bold text-lg">
+              ราคาสุทธิ: <span>{{ formatPrice(finalPrice) }}</span> บาท
+            </div>
           </div>
-          <div class="mt-8 flex justify-end">
+          <div class="cart-actions">
             <router-link to="/products"
-              class="btn bg-gradient-to-r from-blue-400 to-green-400 text-white rounded-xl px-6 py-2 font-semibold shadow hover:from-green-400 hover:to-blue-400 transition-all">
+              class="btn cart-back-btn">
               กลับไปเลือกสินค้า
             </router-link>
+            <button
+              @click="checkout"
+              :disabled="checkoutLoading"
+              class="btn btn-gradient cart-checkout-btn"
+            >
+              <span v-if="checkoutLoading" class="loader" style="margin-right:8px"></span>
+              <span>สั่งซื้อ</span>
+            </button>
           </div>
         </div>
       </div>
@@ -46,117 +150,75 @@
 </template>
 
 <script>
-import axios from 'axios'
-
+import "@/styles/cart.css"
+import CartViewModel from '../viewmodels/CartViewModel.js'
 export default {
   name: 'CartView',
+  mixins: [CartViewModel],
   data() {
     return {
-      cart: {
-        customerName: '',
-        items: []
-      },
-      loading: true,
-      products: [],
-      errorMessage: ''
-    }
-  },
-  computed: {
-    totalPrice() {
-      return this.mergedItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
-    },
-    mergedItems() {
-      // ใช้ getProductInfo เพื่อรวมสินค้าซ้ำ
-      const map = {}
-      for (const item of this.cart.items) {
-        const key = this.getProductInfo(item.product).id + '_' + item.price
-        if (!map[key]) {
-          map[key] = { ...item }
-        } else {
-          map[key].quantity += item.quantity
-        }
-      }
-      return Object.values(map)
+      checkoutLoading: false,
+      clearingCart: false,
+      removingItems: []
     }
   },
   methods: {
-    getProductInfo(product) {
-      // คืนค่า { id, name } ของสินค้า
-      let id = ''
-      if (typeof product === 'string') id = product
-      else if (product && product.$oid) id = product.$oid
-      else if (product && product._id) id = product._id
-      // ถ้า populate แล้ว
-      if (product && product.product_name) {
-        return { id: product._id ? product._id : id, name: product.product_name }
+    getProductImg(img) {
+      if (!img) return '';
+      if (/^https?:\/\//.test(img)) return img;
+      // ตรวจสอบ path ว่าถูกต้องหรือไม่
+      return `http://localhost:3000/uploads/${encodeURIComponent(img)}`;
+    },
+    onImgError(event) {
+      // แสดง placeholder ถ้ารูปโหลดไม่ได้
+      event.target.style.display = 'none';
+      const placeholder = event.target.parentElement.querySelector('.cart-img-placeholder');
+      if (placeholder) {
+        placeholder.style.display = 'inline-block';
       }
-      // หาใน products
-      const found = this.products.find(p => p._id === id)
-      return { id, name: found ? found.product_name : id }
     },
-    getItemId(item) {
-      if (typeof item._id === 'string') return item._id
-      if (item._id && item._id.$oid) return item._id.$oid
-      return Math.random()
-    },
-    async fetchProducts() {
-      const res = await axios.get('http://localhost:3000/products/')
-      this.products = Array.isArray(res.data.data) ? res.data.data : []
-    },
-    async fetchCart() {
-      const token = localStorage.getItem('token')
-      const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {}
-      const res = await axios.get('http://localhost:3000/orders/', config)
-      const orders = res.data.data
-      if (Array.isArray(orders)) {
-        this.cart = orders.length > 0 ? orders[orders.length - 1] : { customerName: '', items: [] }
-      } else {
-        this.cart = orders || { customerName: '', items: [] }
+    onImgLoad(event) {
+      // ซ่อน placeholder เมื่อรูปโหลดสำเร็จ
+      const placeholder = event.target.parentElement.querySelector('.cart-img-placeholder');
+      if (placeholder) {
+        placeholder.style.display = 'none';
       }
-    }
-  },
-  async mounted() {
-    this.loading = true
-    try {
-      await this.fetchProducts()
-      await this.fetchCart()
-    } catch (e) {
-      this.cart = { customerName: '', items: [] }
-      this.errorMessage = 'เกิดข้อผิดพลาดในการโหลดตะกร้า: ' + (e.response?.data?.message || e.message)
-      console.error('Cart load error:', e.response?.data || e)
-    } finally {
-      this.loading = false
+    },
+    formatPrice(val) {
+      if (typeof val !== 'number') return val;
+      return val.toLocaleString('th-TH', { minimumFractionDigits: 0 });
+    },
+    async removeItem(item) {
+      const itemId = this.getItemId(item);
+      if (this.removingItems.includes(itemId)) return;
+      
+      this.removingItems.push(itemId);
+      try {
+        await this.$options.mixins[0].methods.removeItem.call(this, item);
+      } finally {
+        this.removingItems = this.removingItems.filter(id => id !== itemId);
+      }
+    },
+    async clearCart() {
+      if (this.clearingCart) return;
+      
+      this.clearingCart = true;
+      try {
+        await this.$options.mixins[0].methods.clearCart.call(this);
+      } finally {
+        this.clearingCart = false;
+      }
+    },
+    async checkout() {
+      if (this.checkoutLoading) return;
+      this.checkoutLoading = true;
+      try {
+        await this.$options.mixins[0].methods.checkout.call(this);
+        window.location.reload();
+      } finally {
+        this.checkoutLoading = false;
+      }
     }
   }
 }
 </script>
-
-<style scoped>
-.table th, .table td {
-  text-align: center;
-  vertical-align: middle;
-}
-.table {
-  border-radius: 1rem;
-  overflow: hidden;
-}
-.container {
-  max-width: 1200px;
-}
-.btn {
-  border: none;
-  outline: none;
-  cursor: pointer;
-  font-size: 1.1rem;
-  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
-}
-@media (max-width: 600px) {
-  .w-full.max-w-2xl {
-    padding: 1rem;
-  }
-  .table th, .table td {
-    font-size: 0.95rem;
-    padding: 0.3rem;
-  }
-}
-</style>

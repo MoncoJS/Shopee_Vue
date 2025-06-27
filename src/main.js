@@ -13,5 +13,8 @@ new Vue({
   router,
   store,
   render: (h) => h(App),
+  created() {
+    this.$store.dispatch('fetchUser'); // Fetch user data when app is created
+  },
 }).$mount("#app");
 
