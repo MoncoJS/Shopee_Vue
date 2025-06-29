@@ -5,23 +5,20 @@
       <div class="hero-content">
         <h1 class="hero-title">ค้นพบสินค้าที่คุณต้องการ</h1>
         <p class="hero-subtitle">สินค้าคุณภาพดี ราคาดี จากร้านค้าที่เชื่อถือได้</p>
-        
+
         <!-- Search Bar -->
         <div class="search-container">
           <div class="search-wrapper">
             <svg class="search-icon" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+              <path
+                d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
             </svg>
-            <input
-              v-model="search"
-              type="search"
-              placeholder="ค้นหาสินค้าที่คุณต้องการ..."
-              class="search-input"
-              @keyup.enter="onSearch"
-            />
+            <input v-model="search" type="search" placeholder="ค้นหาสินค้าที่คุณต้องการ..." class="search-input"
+              @keyup.enter="onSearch" />
             <button v-if="search" @click="clearSearch" class="clear-search">
               <svg viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                <path
+                  d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
               </svg>
             </button>
           </div>
@@ -38,7 +35,7 @@
             <span class="results-count">{{ (filteredProducts || []).length }} สินค้า</span>
             <span v-if="search" class="search-term">จากการค้นหา "{{ search }}"</span>
           </div>
-          
+
           <div class="filter-actions">
             <select v-model="sortBy" class="sort-select">
               <option value="default">เรียงตาม</option>
@@ -75,58 +72,42 @@
 
         <!-- Products Grid -->
         <div v-else class="products-grid">
-          <div
-            v-for="product in sortedProducts"
-            :key="product._id"
-            class="product-card"
-            :class="{ 'out-of-stock': product.amount <= 0 }"
-            @click="showProductDetail(product)"
-          >
+          <div v-for="product in sortedProducts" :key="product._id" class="product-card"
+            :class="{ 'out-of-stock': product.amount <= 0 }" @click="showProductDetail(product)">
             <!-- Product Image -->
             <div class="product-image-container">
-              <img
-                v-if="product.img"
-                :src="getProductImg(product.img)"
-                :alt="product.product_name"
-                class="product-image"
-                @error="onImgError"
-                @load="onImgLoad"
-                loading="lazy"
-              />
+              <img v-if="product.img" :src="getProductImg(product.img)" :alt="product.product_name"
+                class="product-image" @error="onImgError" @load="onImgLoad" loading="lazy" />
               <div v-else class="product-image-placeholder">
                 <svg viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                  <path
+                    d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
                 </svg>
                 <span>ไม่มีรูปภาพ</span>
               </div>
-              
+
               <!-- Stock Badge -->
               <div v-if="product.amount <= 0" class="stock-badge out-of-stock">หมดสต๊อก</div>
               <div v-else-if="product.amount <= 5" class="stock-badge low-stock">เหลือน้อย</div>
-              
+
               <!-- Admin Actions -->
               <div v-if="isAdmin" class="admin-actions" @click.stop>
-                <router-link 
-                  :to="{ name: 'edit_product', params: { id: product._id } }" 
-                  class="admin-btn edit-btn"
-                  title="แก้ไขสินค้า"
-                >
+                <router-link :to="{ name: 'edit_product', params: { id: product._id } }" class="admin-btn edit-btn"
+                  title="แก้ไขสินค้า">
                   <svg viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                    <path
+                      d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
                   </svg>
                 </router-link>
-                <button 
-                  @click="deleteProduct(product)" 
-                  class="admin-btn delete-btn"
-                  title="ลบสินค้า"
-                  :disabled="isDeletingProduct === product._id"
-                >
+                <button @click="deleteProduct(product)" class="admin-btn delete-btn" title="ลบสินค้า"
+                  :disabled="isDeletingProduct === product._id">
                   <svg v-if="isDeletingProduct === product._id" class="loading-icon" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.3"/>
-                    <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.3" />
+                    <path fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
                   <svg v-else viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
                   </svg>
                 </button>
               </div>
@@ -135,7 +116,8 @@
               <div class="detail-overlay">
                 <div class="detail-btn">
                   <svg viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                    <path
+                      d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" />
                   </svg>
                   <span>ดูรายละเอียด</span>
                 </div>
@@ -145,10 +127,17 @@
             <!-- Product Info -->
             <div class="product-info">
               <h3 class="product-name">{{ product.product_name }}</h3>
+              <div v-if="product.category" class="product-category">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path
+                    d="M12,2A3,3 0 0,1 15,5V11A3,3 0 0,1 12,14A3,3 0 0,1 9,11V5A3,3 0 0,1 12,2M19,11C20.11,11 21,11.89 21,13V14C21,15.11 20.11,16 19,16H18V13A6,6 0 0,0 12,7A6,6 0 0,0 6,13V16H5C3.89,16 3,15.11 3,14V13C3,11.89 3.89,11 5,11H6V5A6,6 0 0,1 12,-1A6,6 0 0,1 18,5V11H19Z" />
+                </svg>
+                <span>{{ getCategoryName(product.category) }}</span>
+              </div>
               <p v-if="product.description" class="product-description">
                 {{ truncateText(product.description, 80) }}
               </p>
-              
+
               <div class="product-price-section">
                 <span class="product-price">฿{{ formatPrice(product.price) }}</span>
                 <span class="product-stock">
@@ -159,46 +148,34 @@
               <!-- Add to Cart Section -->
               <div class="cart-section" @click.stop>
                 <div class="quantity-controls" v-if="product.amount > 0">
-                  <button 
-                    @click="decreaseQuantity(product._id)" 
-                    :disabled="getQuantity(product._id) <= 1"
-                    class="qty-btn"
-                  >
+                  <button @click="decreaseQuantity(product._id)" :disabled="getQuantity(product._id) <= 1"
+                    class="qty-btn">
                     <svg viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M19 13H5v-2h14v2z"/>
+                      <path d="M19 13H5v-2h14v2z" />
                     </svg>
                   </button>
-                  <input 
-                    type="number" 
-                    min="1" 
-                    :max="product.amount" 
-                    :value="getQuantity(product._id)"
-                    @input="setQuantity(product._id, $event.target.value)"
-                    class="qty-input"
-                    @change="validateQuantity(product)"
-                  />
-                  <button 
-                    @click="increaseQuantity(product._id, product.amount)" 
-                    :disabled="getQuantity(product._id) >= product.amount"
-                    class="qty-btn"
-                  >
+                  <input type="number" min="1" :max="product.amount" :value="getQuantity(product._id)"
+                    @input="setQuantity(product._id, $event.target.value)" class="qty-input"
+                    @change="validateQuantity(product)" />
+                  <button @click="increaseQuantity(product._id, product.amount)"
+                    :disabled="getQuantity(product._id) >= product.amount" class="qty-btn">
                     <svg viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                      <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
                     </svg>
                   </button>
                 </div>
 
-                <button
-                  class="add-to-cart-btn"
+                <button class="add-to-cart-btn"
                   :disabled="product.amount <= 0 || getQuantity(product._id) > product.amount || isAddingToCart === product._id"
-                  @click="addToCart(product)"
-                >
+                  @click="addToCart(product)">
                   <svg v-if="isAddingToCart === product._id" class="loading-icon" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.3"/>
-                    <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.3" />
+                    <path fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
                   <svg v-else viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12L8.1 13h7.45c.75 0 1.41-.41 1.75-1.03L21.7 4H5.21l-.94-2H1zm16 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                    <path
+                      d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12L8.1 13h7.45c.75 0 1.41-.41 1.75-1.03L21.7 4H5.21l-.94-2H1zm16 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
                   </svg>
                   <span v-if="product.amount <= 0">สินค้าหมด</span>
                   <span v-else-if="isAddingToCart === product._id">กำลังเพิ่ม...</span>
@@ -218,7 +195,8 @@
           <h3>รายละเอียดสินค้า</h3>
           <button @click="closeProductModal" class="close-btn">
             <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+              <path
+                d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
             </svg>
           </button>
         </div>
@@ -228,38 +206,35 @@
             <!-- Product Image Section -->
             <div class="product-detail-image">
               <div class="main-image">
-                <img
-                  v-if="selectedProduct.img"
-                  :src="getProductImg(selectedProduct.img)"
-                  :alt="selectedProduct.product_name"
-                  class="detail-image"
-                  @error="onImgError"
-                />
+                <img v-if="selectedProduct.img" :src="getProductImg(selectedProduct.img)"
+                  :alt="selectedProduct.product_name" class="detail-image" @error="onImgError" />
                 <div v-else class="detail-image-placeholder">
                   <svg viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                    <path
+                      d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
                   </svg>
                   <p>ไม่มีรูปภาพ</p>
                 </div>
               </div>
-              
+
               <!-- Stock Status -->
               <div class="stock-status">
                 <div v-if="selectedProduct.amount <= 0" class="status-badge out-of-stock">
                   <svg viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    <path
+                      d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
                   </svg>
                   หมดสต๊อก
                 </div>
                 <div v-else-if="selectedProduct.amount <= 5" class="status-badge low-stock">
                   <svg viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+                    <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" />
                   </svg>
                   เหลือน้อย ({{ selectedProduct.amount }} ชิ้น)
                 </div>
                 <div v-else class="status-badge in-stock">
                   <svg viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
                   </svg>
                   พร้อมส่ง ({{ selectedProduct.amount }} ชิ้น)
                 </div>
@@ -293,6 +268,10 @@
               <!-- Product Info Grid -->
               <div class="product-info-grid">
                 <div class="info-item">
+                  <div class="info-label">หมวดหมู่</div>
+                  <div class="info-value">{{ getCategoryName(selectedProduct.category) }}</div>
+                </div>
+                <div class="info-item">
                   <div class="info-label">จำนวนคงเหลือ</div>
                   <div class="info-value">{{ selectedProduct.amount }} ชิ้น</div>
                 </div>
@@ -315,55 +294,42 @@
                 <div v-if="selectedProduct.amount > 0" class="quantity-section-modal">
                   <label class="quantity-label">จำนวน:</label>
                   <div class="quantity-controls-modal">
-                    <button 
-                      @click="decreaseModalQuantity" 
-                      :disabled="modalQuantity <= 1"
-                      class="qty-btn-modal"
-                    >
+                    <button @click="decreaseModalQuantity" :disabled="modalQuantity <= 1" class="qty-btn-modal">
                       <svg viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M19 13H5v-2h14v2z"/>
+                        <path d="M19 13H5v-2h14v2z" />
                       </svg>
                     </button>
-                    <input 
-                      type="number" 
-                      min="1" 
-                      :max="selectedProduct.amount" 
-                      v-model.number="modalQuantity"
-                      class="qty-input-modal"
-                    />
-                    <button 
-                      @click="increaseModalQuantity" 
-                      :disabled="modalQuantity >= selectedProduct.amount"
-                      class="qty-btn-modal"
-                    >
+                    <input type="number" min="1" :max="selectedProduct.amount" v-model.number="modalQuantity"
+                      class="qty-input-modal" />
+                    <button @click="increaseModalQuantity" :disabled="modalQuantity >= selectedProduct.amount"
+                      class="qty-btn-modal">
                       <svg viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
                       </svg>
                     </button>
                   </div>
                 </div>
 
                 <div class="action-buttons">
-                  <button
-                    v-if="selectedProduct.amount > 0"
-                    @click="addToCartFromModal"
-                    :disabled="isAddingToCart === selectedProduct._id"
-                    class="add-to-cart-modal-btn"
-                  >
+                  <button v-if="selectedProduct.amount > 0" @click="addToCartFromModal"
+                    :disabled="isAddingToCart === selectedProduct._id" class="add-to-cart-modal-btn">
                     <svg v-if="isAddingToCart === selectedProduct._id" class="loading-icon" viewBox="0 0 24 24">
-                      <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.3"/>
-                      <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                      <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.3" />
+                      <path fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
                     <svg v-else viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12L8.1 13h7.45c.75 0 1.41-.41 1.75-1.03L21.7 4H5.21l-.94-2H1zm16 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                      <path
+                        d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12L8.1 13h7.45c.75 0 1.41-.41 1.75-1.03L21.7 4H5.21l-.94-2H1zm16 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
                     </svg>
                     <span v-if="isAddingToCart === selectedProduct._id">กำลังเพิ่มลงตะกร้า...</span>
                     <span v-else>เพิ่มลงตะกร้า</span>
                   </button>
-                  
+
                   <button v-else class="out-of-stock-btn" disabled>
                     <svg viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                      <path
+                        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
                     </svg>
                     สินค้าหมด
                   </button>
@@ -418,7 +384,7 @@ export default {
     },
     sortedProducts() {
       const products = [...this.filteredProducts]
-      
+
       switch (this.sortBy) {
         case 'price-low':
           return products.sort((a, b) => a.price - b.price)
@@ -474,12 +440,12 @@ export default {
     getProductImg(img) {
       if (!img) return '';
       if (/^https?:\/\//.test(img)) return img;
-      
+
       const baseUrl = process.env.VUE_APP_API_BASE_URL || 'http://localhost:3000';
-      
+
       // Clean the img path
       let cleanImg = img.replace(/^\/+/, '').replace(/^uploads\//, '');
-      
+
       // Use the new image endpoint that handles CORS properly
       return `${baseUrl}/products/image/${encodeURIComponent(cleanImg)}`;
     },
@@ -525,7 +491,7 @@ export default {
     },
     async addToCart(product) {
       if (this.isAddingToCart === product._id) return;
-      
+
       this.isAddingToCart = product._id;
       try {
         const quantity = this.getQuantity(product._id);
@@ -551,18 +517,18 @@ export default {
         await this.$options.mixins[0].methods.fetchProducts.call(this);
       }
     },
-    
+
     async deleteProduct(product) {
       // Confirm deletion
       const confirmed = confirm(`คุณต้องการลบสินค้า "${product.product_name}" หรือไม่?\n\nการดำเนินการนี้ไม่สามารถยกเลิกได้`);
       if (!confirmed) return;
-      
+
       this.isDeletingProduct = product._id;
-      
+
       try {
         const api = require('@/services/api').default;
         const response = await api.delete(`/products/${product._id}`);
-        
+
         if (response.data.success) {
           // Remove product from local array
           this.products = this.products.filter(p => p._id !== product._id);
@@ -609,10 +575,10 @@ export default {
 
     async addToCartFromModal() {
       if (!this.selectedProduct || this.isAddingToCart === this.selectedProduct._id) return;
-      
+
       // Set the quantity for this product
       this.setQuantity(this.selectedProduct._id, this.modalQuantity);
-      
+
       try {
         await this.addToCart(this.selectedProduct);
         this.$notify.success(`เพิ่ม "${this.selectedProduct.product_name}" ลงตะกร้าแล้ว (${this.modalQuantity} ชิ้น)`);
@@ -621,7 +587,23 @@ export default {
         console.error('Error adding to cart from modal:', error);
         this.$notify.error('เกิดข้อผิดพลาดในการเพิ่มสินค้าลงตะกร้า');
       }
-    }
+    },
+
+    getCategoryName(category) {
+      const categoryMap = {
+        'electronics': 'อิเล็กทรอนิกส์',
+        'clothing': 'เสื้อผ้า',
+        'books': 'หนังสือ',
+        'sports': 'กีฬา',
+        'home': 'บ้านและสวน',
+        'beauty': 'ความงาม',
+        'food': 'อาหารและเครื่องดื่ม',
+        'toys': 'ของเล่น',
+        'automotive': 'ยานยนต์',
+        'other': 'อื่นๆ'
+      };
+      return categoryMap[category] || category || 'ทั่วไป';
+    },
   }
 }
 </script>
@@ -655,22 +637,6 @@ export default {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 1rem;
-  text-align: center;
-  position: relative;
-  z-index: 1;
-}
-
-.hero-title {
-  font-size: 2.5rem;
-  font-weight: 700;
-  margin-bottom: 1rem;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.hero-subtitle {
-  font-size: 1.2rem;
-  margin-bottom: 2rem;
-  opacity: 0.9;
 }
 
 .search-container {
@@ -791,7 +757,9 @@ export default {
   border-color: #ee4d2d;
 }
 
-.loading-state, .error-state, .empty-state {
+.loading-state,
+.error-state,
+.empty-state {
   text-align: center;
   padding: 3rem 1rem;
 }
@@ -807,16 +775,23 @@ export default {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
-.error-icon, .empty-icon {
+.error-icon,
+.empty-icon {
   font-size: 3rem;
   margin-bottom: 1rem;
 }
 
-.retry-btn, .clear-search-btn {
+.retry-btn,
+.clear-search-btn {
   background: #ee4d2d;
   color: white;
   border: none;
@@ -828,7 +803,8 @@ export default {
   margin-top: 1rem;
 }
 
-.retry-btn:hover, .clear-search-btn:hover {
+.retry-btn:hover,
+.clear-search-btn:hover {
   background: #d63918;
 }
 
@@ -848,7 +824,8 @@ export default {
   position: relative;
   border: 1px solid rgba(0, 0, 0, 0.05);
   backdrop-filter: blur(10px);
-  min-height: 480px; /* Increased to accommodate larger image */
+  min-height: 480px;
+  /* Increased to accommodate larger image */
   display: flex;
   flex-direction: column;
 }
@@ -884,7 +861,8 @@ export default {
 
 .product-image-container {
   position: relative;
-  height: 320px; /* Increased height for more prominent image display */
+  height: 320px;
+  /* Increased height for more prominent image display */
   overflow: hidden;
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
   z-index: 2;
@@ -894,16 +872,19 @@ export default {
 .product-image {
   width: 100%;
   height: 100%;
-  object-fit: cover; /* Ensures image fills container while maintaining aspect ratio */
+  object-fit: cover;
+  /* Ensures image fills container while maintaining aspect ratio */
   object-position: center;
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   filter: brightness(1.05) contrast(1.05);
   display: block;
-  background-color: #f8f9fa; /* Fallback background while loading */
+  background-color: #f8f9fa;
+  /* Fallback background while loading */
 }
 
 .product-card:hover .product-image {
-  transform: scale(1.05); /* Slightly reduced scale for better performance */
+  transform: scale(1.05);
+  /* Slightly reduced scale for better performance */
   filter: brightness(1.1) contrast(1.1);
 }
 
@@ -982,14 +963,34 @@ export default {
 }
 
 @keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.05);
+  }
 }
 
 @keyframes bounce {
-  0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
-  40% { transform: translateY(-3px); }
-  60% { transform: translateY(-2px); }
+
+  0%,
+  20%,
+  50%,
+  80%,
+  100% {
+    transform: translateY(0);
+  }
+
+  40% {
+    transform: translateY(-3px);
+  }
+
+  60% {
+    transform: translateY(-2px);
+  }
 }
 
 .admin-actions {
@@ -1052,8 +1053,13 @@ export default {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .product-info {
@@ -1061,7 +1067,8 @@ export default {
   background: white;
   position: relative;
   z-index: 2;
-  flex-grow: 1; /* Take up remaining space in flex container */
+  flex-grow: 1;
+  /* Take up remaining space in flex container */
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -1083,6 +1090,31 @@ export default {
 
 .product-card:hover .product-name {
   color: #ee4d2d;
+}
+
+.product-category {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding: 0.375rem 0.75rem;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #666;
+  border: 1px solid #e9ecef;
+  width: fit-content;
+}
+
+.product-category svg {
+  width: 16px;
+  height: 16px;
+  color: #ee4d2d;
+}
+
+.product-category span {
+  color: #555;
 }
 
 .product-description {
@@ -1273,6 +1305,7 @@ export default {
     opacity: 0;
     transform: translateY(30px) scale(0.95);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -1672,7 +1705,8 @@ export default {
   }
 
   .products-grid {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); /* Slightly larger minimum for better image display */
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    /* Slightly larger minimum for better image display */
     gap: 1rem;
   }
 

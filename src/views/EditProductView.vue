@@ -125,6 +125,24 @@
           <div v-if="errors.price" class="error-message">{{ errors.price }}</div>
         </div>
 
+        <!-- Product Category -->
+        <div class="form-group">
+          <label for="category" class="form-label">หมวดหมู่</label>
+          <select id="category" v-model="form.category" class="form-input">
+            <option value="">เลือกหมวดหมู่</option>
+            <option value="electronics">อิเล็กทรอนิกส์</option>
+            <option value="clothing">เสื้อผ้า</option>
+            <option value="books">หนังสือ</option>
+            <option value="sports">กีฬา</option>
+            <option value="home">บ้านและสวน</option>
+            <option value="beauty">ความงาม</option>
+            <option value="food">อาหารและเครื่องดื่ม</option>
+            <option value="toys">ของเล่น</option>
+            <option value="automotive">ยานยนต์</option>
+            <option value="other">อื่นๆ</option>
+          </select>
+        </div>
+
         <!-- Product Stock -->
         <div class="form-group">
           <label for="stock" class="form-label">จำนวนในสต็อก *</label>
