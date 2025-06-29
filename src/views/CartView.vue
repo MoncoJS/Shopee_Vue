@@ -145,9 +145,13 @@
                       <button 
                         @click="decreaseQty(item)" 
                         class="qty-btn"
-                        :disabled="item.quantity <= 1"
+                        :disabled="item.quantity <= 1 || updatingItems.includes(getItemId(item))"
                       >
-                        <svg viewBox="0 0 24 24" fill="currentColor">
+                        <svg v-if="updatingItems.includes(getItemId(item))" class="loading-icon" viewBox="0 0 24 24">
+                          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.3"/>
+                          <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                        </svg>
+                        <svg v-else viewBox="0 0 24 24" fill="currentColor">
                           <path d="M19 13H5v-2h14v2z"/>
                         </svg>
                       </button>
@@ -155,8 +159,13 @@
                       <button 
                         @click="increaseQty(item)" 
                         class="qty-btn"
+                        :disabled="updatingItems.includes(getItemId(item))"
                       >
-                        <svg viewBox="0 0 24 24" fill="currentColor">
+                        <svg v-if="updatingItems.includes(getItemId(item))" class="loading-icon" viewBox="0 0 24 24">
+                          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.3"/>
+                          <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                        </svg>
+                        <svg v-else viewBox="0 0 24 24" fill="currentColor">
                           <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
                         </svg>
                       </button>
@@ -296,6 +305,7 @@ export default {
       checkoutLoading: false,
       clearingCart: false,
       removingItems: [],
+      updatingItems: [], // Track items being updated
       couponCode: '',
       appliedCoupon: null,
       couponLoading: false,
@@ -486,7 +496,114 @@ export default {
     
     getItemId(item) {
       return item.product_id || item._id || item.id;
-    }
+    },
+
+    // Quantity management methods
+    async increaseQty(item) {
+      const itemId = this.getItemId(item);
+      if (this.updatingItems.includes(itemId)) return;
+      
+      this.updatingItems.push(itemId);
+      try {
+        const newQuantity = item.quantity + 1;
+        
+        // Update in backend first
+        await this.updateItemQuantity(item, newQuantity);
+        
+        // Refresh cart data to get updated quantities
+        await this.fetchCartItems();
+        
+        this.$notify.success('เพิ่มจำนวนสินค้าแล้ว');
+      } catch (error) {
+        console.error('Error increasing quantity:', error);
+        this.$notify.error('เกิดข้อผิดพลาดในการเพิ่มจำนวนสินค้า');
+      } finally {
+        this.updatingItems = this.updatingItems.filter(id => id !== itemId);
+      }
+    },
+
+    async decreaseQty(item) {
+      if (item.quantity <= 1) return;
+      
+      const itemId = this.getItemId(item);
+      if (this.updatingItems.includes(itemId)) return;
+      
+      this.updatingItems.push(itemId);
+      try {
+        const newQuantity = item.quantity - 1;
+        
+        // Update in backend first
+        await this.updateItemQuantity(item, newQuantity);
+        
+        // Refresh cart data to get updated quantities
+        await this.fetchCartItems();
+        
+        this.$notify.success('ลดจำนวนสินค้าแล้ว');
+      } catch (error) {
+        console.error('Error decreasing quantity:', error);
+        this.$notify.error('เกิดข้อผิดพลาดในการลดจำนวนสินค้า');
+      } finally {
+        this.updatingItems = this.updatingItems.filter(id => id !== itemId);
+      }
+    },
+
+    async updateItemQuantity(item, newQuantity) {
+      const api = require('@/services/api').default;
+      
+      // The current structure has orders with items array
+      // We need to find which order contains this item and update it
+      
+      try {
+        // First, get all orders to find which one contains this item
+        const ordersResponse = await api.get('/orders/');
+        if (!ordersResponse.data.success) {
+          throw new Error('ไม่สามารถดึงข้อมูล orders ได้');
+        }
+        
+        const orders = ordersResponse.data.data || [];
+        let targetOrder = null;
+        let itemIndex = -1;
+        
+        // Find the order and item index
+        for (const order of orders) {
+          if (order.items && Array.isArray(order.items)) {
+            itemIndex = order.items.findIndex(orderItem => {
+              const productId = orderItem.product._id || orderItem.product;
+              const itemProductId = item.product._id || item.product;
+              return productId === itemProductId && orderItem.price === item.price;
+            });
+            
+            if (itemIndex !== -1) {
+              targetOrder = order;
+              break;
+            }
+          }
+        }
+        
+        if (!targetOrder || itemIndex === -1) {
+          throw new Error('ไม่พบสินค้าในตะกร้า');
+        }
+        
+        // Update the specific item quantity
+        const updatedItems = [...targetOrder.items];
+        updatedItems[itemIndex].quantity = newQuantity;
+        
+        // Update the entire order
+        const response = await api.put('/orders/', {
+          items: updatedItems
+        });
+        
+        if (!response.data.success) {
+          throw new Error(response.data.message || 'ไม่สามารถอัปเดตจำนวนสินค้าได้');
+        }
+        
+        return response.data;
+        
+      } catch (error) {
+        console.error('Error updating item quantity:', error);
+        throw error;
+      }
+    },
   },
   computed: {
     // ...existing computed properties...
