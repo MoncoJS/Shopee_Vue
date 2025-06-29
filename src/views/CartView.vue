@@ -366,11 +366,26 @@ export default {
       const itemId = this.getItemId(item);
       if (this.removingItems.includes(itemId)) return;
       
+      // Get product info for confirmation message
+      const productInfo = this.getProductInfo(item);
+      const productName = productInfo.name || productInfo.product_name || 'สินค้านี้';
+      
+      // Show confirmation dialog
+      if (!confirm(`คุณต้องการลบ "${productName}" ออกจากตะกร้าหรือไม่?`)) {
+        return;
+      }
+      
       this.removingItems.push(itemId);
       try {
         await this.$options.mixins[0].methods.removeItem.call(this, item);
-        this.$notify.success('ลบสินค้าออกจากตะกร้าแล้ว');
+        
+        // Remove from selected items if it was selected
+        this.$delete(this.selectedItems, itemId);
+        this.updateSelectAllState();
+        
+        this.$notify.success(`ลบ "${productName}" ออกจากตะกร้าแล้ว`);
       } catch (error) {
+        console.error('Error removing item:', error);
         this.$notify.error('เกิดข้อผิดพลาดในการลบสินค้า');
       } finally {
         this.removingItems = this.removingItems.filter(id => id !== itemId);
@@ -384,9 +399,44 @@ export default {
       this.clearingCart = true;
       try {
         await this.$options.mixins[0].methods.clearCart.call(this);
+        
+        // Clear all selected items
+        this.selectedItems = {};
+        this.selectAll = false;
+        
         this.$notify.success('ล้างตะกร้าสินค้าแล้ว');
       } catch (error) {
         this.$notify.error('เกิดข้อผิดพลาดในการล้างตะกร้า');
+      } finally {
+        this.clearingCart = false;
+      }
+    },
+
+    async removeSelectedItems() {
+      const selectedItems = this.getSelectedItems();
+      if (selectedItems.length === 0) {
+        this.$notify.warning('กรุณาเลือกสินค้าที่ต้องการลบ');
+        return;
+      }
+
+      const confirmMessage = `คุณต้องการลบสินค้าที่เลือก ${selectedItems.length} รายการหรือไม่?`;
+      if (!confirm(confirmMessage)) return;
+
+      this.clearingCart = true;
+      try {
+        // Remove each selected item
+        for (const item of selectedItems) {
+          await this.$options.mixins[0].methods.removeItem.call(this, item);
+        }
+
+        // Clear selected items
+        this.selectedItems = {};
+        this.selectAll = false;
+
+        this.$notify.success(`ลบสินค้า ${selectedItems.length} รายการแล้ว`);
+      } catch (error) {
+        console.error('Error removing selected items:', error);
+        this.$notify.error('เกิดข้อผิดพลาดในการลบสินค้า');
       } finally {
         this.clearingCart = false;
       }

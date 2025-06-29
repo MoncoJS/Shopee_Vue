@@ -113,6 +113,20 @@
                     <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
                   </svg>
                 </router-link>
+                <button 
+                  @click="deleteProduct(product)" 
+                  class="admin-btn delete-btn"
+                  title="ลบสินค้า"
+                  :disabled="isDeletingProduct === product._id"
+                >
+                  <svg v-if="isDeletingProduct === product._id" class="loading-icon" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.3"/>
+                    <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                  </svg>
+                  <svg v-else viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                  </svg>
+                </button>
               </div>
             </div>
 
@@ -200,6 +214,7 @@ export default {
       search: '',
       sortBy: 'default',
       isAddingToCart: null,
+      isDeletingProduct: null,
       // Ensure products is always an array
       products: [],
       // Track quantities for each product - always initialize as object
@@ -350,6 +365,32 @@ export default {
       // Call the mixin method to retry fetching products
       if (this.$options.mixins[0].methods.fetchProducts) {
         await this.$options.mixins[0].methods.fetchProducts.call(this);
+      }
+    },
+    
+    async deleteProduct(product) {
+      // Confirm deletion
+      const confirmed = confirm(`คุณต้องการลบสินค้า "${product.product_name}" หรือไม่?\n\nการดำเนินการนี้ไม่สามารถยกเลิกได้`);
+      if (!confirmed) return;
+      
+      this.isDeletingProduct = product._id;
+      
+      try {
+        const api = require('@/services/api').default;
+        const response = await api.delete(`/products/${product._id}`);
+        
+        if (response.data.success) {
+          // Remove product from local array
+          this.products = this.products.filter(p => p._id !== product._id);
+          this.$notify.success(`ลบสินค้า "${product.product_name}" เรียบร้อยแล้ว`);
+        } else {
+          throw new Error(response.data.message || 'ไม่สามารถลบสินค้าได้');
+        }
+      } catch (error) {
+        console.error('Error deleting product:', error);
+        this.$notify.error('เกิดข้อผิดพลาดในการลบสินค้า');
+      } finally {
+        this.isDeletingProduct = null;
       }
     }
   }
@@ -659,7 +700,7 @@ export default {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
   text-decoration: none;
 }
 
@@ -667,9 +708,35 @@ export default {
   background: rgba(0, 0, 0, 0.9);
 }
 
+.admin-btn.edit-btn:hover {
+  background: #2563eb;
+}
+
+.admin-btn.delete-btn {
+  background: rgba(239, 68, 68, 0.9);
+}
+
+.admin-btn.delete-btn:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.admin-btn.delete-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .admin-btn svg {
   width: 16px;
   height: 16px;
+}
+
+.loading-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .product-info {
