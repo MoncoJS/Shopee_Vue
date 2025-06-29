@@ -4,6 +4,7 @@
     <div class="main-content">
       <router-view />
     </div>
+    <NotificationContainer />
   </div>
 </template>
 
@@ -27,10 +28,13 @@
 
 <script>
 import AppNavbar from '@/components/Navbar.component.vue'
+import NotificationContainer from '@/components/NotificationContainer.vue'
+
 export default {
   name: 'HomeView',
   components: {
-    AppNavbar
+    AppNavbar,
+    NotificationContainer
   }
 }
 </script>

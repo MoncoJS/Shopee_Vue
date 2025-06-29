@@ -1,193 +1,292 @@
-import axios from 'axios'
-import { getProductInfo, getItemId } from '../utils/cartUtils'
-import CouponService from '../services/CouponService'
+import api from '@/services/api'
+import { mapGetters } from 'vuex'
 
 export default {
   data() {
     return {
-      cart: {
-        customerName: '',
-        items: []
-      },
-      loading: true,
-      products: [],
+      orders: [],
+      products: {},
+      loading: false,
       errorMessage: '',
       couponCode: '',
-      appliedCoupon: null,
+      appliedCoupon: null
     }
   },
   computed: {
+    ...mapGetters(['isLoggedIn']),
+    mergedItems() {
+      const itemMap = new Map()
+      
+      // Ensure orders is an array before calling forEach
+      if (!Array.isArray(this.orders)) {
+        return []
+      }
+      
+      this.orders.forEach(item => {
+        // item.product could be an object or just an ID
+        const productId = item.product._id || item.product
+        const key = `${productId}_${item.price}`
+        const existingItem = itemMap.get(key)
+        
+        if (existingItem) {
+          existingItem.quantity += item.quantity
+        } else {
+          itemMap.set(key, {
+            product: item.product,
+            quantity: item.quantity,
+            price: item.price,
+            _id: item._id,
+            orderId: item.orderId
+          })
+        }
+      })
+      
+      return Array.from(itemMap.values())
+    },
     totalPrice() {
-      return this.mergedItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+      return this.mergedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
     },
     discountAmount() {
-      if (!this.appliedCoupon) return 0;
-
-      const total = this.totalPrice;
-      if (this.appliedCoupon.discountType === 'percentage') {
-        return (total * this.appliedCoupon.discountValue) / 100;
-      } else if (this.appliedCoupon.discountType === 'fixed') {
-        return this.appliedCoupon.discountValue;
-      }
-      return 0;
+      if (!this.appliedCoupon) return 0
+      return (this.totalPrice * this.appliedCoupon.discount) / 100
     },
     finalPrice() {
-      return Math.max(0, this.totalPrice - this.discountAmount);
-    },
-    mergedItems() {
-      const map = {}
-      for (const item of this.cart.items) {
-        const key = this.getProductInfo(item.product).id + '_' + item.price
-        if (!map[key]) {
-          map[key] = { ...item }
-        } else {
-          map[key].quantity += item.quantity
-        }
-      }
-      return Object.values(map)
-    }
-  },
-  methods: {
-    getProductInfo(product) {
-      return getProductInfo(product, this.products)
-    },
-    getItemId(item) {
-      return getItemId(item)
-    },
-    async fetchProducts() {
-      const res = await axios.get('http://localhost:3000/products/')
-      this.products = Array.isArray(res.data.data) ? res.data.data : []
-    },
-    async fetchCart() {
-      const token = localStorage.getItem('token')
-      const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {}
-      const res = await axios.get('http://localhost:3000/orders/', config)
-      const orders = res.data.data
-      if (Array.isArray(orders)) {
-        this.cart = orders.length > 0 ? orders[orders.length - 1] : { customerName: '', items: [] }
-      } else {
-        this.cart = orders || { customerName: '', items: [] }
-      }
-    },
-    async restoreProductStock(items) {
-      try {
-        const token = localStorage.getItem('token')
-        const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {}
-        await axios.post('http://localhost:3000/orders/restore', { items }, config)
-        await this.fetchProducts()
-      } catch (error) {
-        // console.error('Error restoring product stock:', error)
-      }
-    },
-    async removeItem(item) {
-      const key = this.getProductInfo(item.product).id + '_' + item.price
-      const itemsToRemove = this.cart.items.filter(i => {
-        const k = this.getProductInfo(i.product).id + '_' + i.price
-        return k === key
-      })
-      const restoreItems = itemsToRemove.map(i => ({ product: this.getProductInfo(i.product).id, quantity: i.quantity }))
-      if (restoreItems.length > 0) {
-        await this.restoreProductStock(restoreItems)
-      }
-      this.cart.items = this.cart.items.filter(i => {
-        const k = this.getProductInfo(i.product).id + '_' + i.price
-        return k !== key
-      })
-      await this.updateCartInDatabase()
-    },
-    increaseQty(item) {
-      const key = this.getProductInfo(item.product).id + '_' + item.price
-      const idx = this.cart.items.findIndex(i => {
-        const k = this.getProductInfo(i.product).id + '_' + i.price
-        return k === key
-      })
-      if (idx !== -1) {
-        if (this.cart.items[idx].quantity < 99) {
-          this.cart.items[idx].quantity++
-        }
-      }
-    },
-    decreaseQty(item) {
-      const key = this.getProductInfo(item.product).id + '_' + item.price
-      const idx = this.cart.items.findIndex(i => {
-        const k = this.getProductInfo(i.product).id + '_' + i.price
-        return k === key
-      })
-      if (idx !== -1 && this.cart.items[idx].quantity > 1) {
-        this.cart.items[idx].quantity--
-      }
-    },
-    async clearCart() {
-      const restoreItems = this.cart.items.map(i => ({ product: this.getProductInfo(i.product).id, quantity: i.quantity }))
-      if (restoreItems.length > 0) {
-        await this.restoreProductStock(restoreItems)
-      }
-      this.cart.items = []
-      await this.updateCartInDatabase()
-      this.appliedCoupon = null; // Clear coupon when cart is cleared
-    },
-    async applyCoupon() {
-      if (!this.couponCode) {
-        this.errorMessage = 'Please enter a coupon code.';
-        this.appliedCoupon = null;
-        return;
-      }
-      try {
-        const response = await CouponService.getCouponByCode(this.couponCode);
-        const coupon = response.data.data;
-
-        if (!coupon || !coupon.isActive || new Date(coupon.expirationDate) < new Date()) {
-          this.errorMessage = 'Invalid or expired coupon code.';
-          this.appliedCoupon = null;
-        } else {
-          this.appliedCoupon = coupon;
-          this.errorMessage = '';
-          alert('Coupon applied successfully!');
-        }
-      } catch (error) {
-        this.errorMessage = error.response?.data?.message || 'Error applying coupon.';
-        this.appliedCoupon = null;
-      }
-    },
-    async updateCartInDatabase(coupon = null) {
-      try {
-        const token = localStorage.getItem('token')
-        if (!token) return
-        const config = { headers: { Authorization: `Bearer ${token}` } }
-        const data = {
-          customerName: this.cart.customerName,
-          items: this.cart.items,
-        };
-        if (coupon) {
-          data.couponCode = coupon.code;
-        }
-        await axios.put('http://localhost:3000/orders/', data, config)
-      } catch (error) {
-        // console.error('Error updating cart in database:', error)
-      }
-    },
-    async checkout() {
-      alert('ขอบคุณสำหรับการสั่งซื้อ! (ฟังก์ชันนี้เป็นตัวอย่าง)')
-      const restoreItems = this.cart.items.map(i => ({ product: this.getProductInfo(i.product).id, quantity: i.quantity }))
-      if (restoreItems.length > 0) {
-        await this.restoreProductStock(restoreItems)
-      }
-      this.cart.items = []
-      await this.updateCartInDatabase(this.appliedCoupon);
-      this.appliedCoupon = null; // Clear coupon after checkout
+      return this.totalPrice - this.discountAmount
     }
   },
   async mounted() {
-    this.loading = true
-    try {
+    if (this.isLoggedIn) {
+      await this.fetchCartItems()
       await this.fetchProducts()
-      await this.fetchCart()
-    } catch (e) {
-      this.cart = { customerName: '', items: [] }
-      this.errorMessage = 'เกิดข้อผิดพลาดในการโหลดตะกร้า: ' + (e.response?.data?.message || e.message)
-      // console.error('Cart load error:', e.response?.data || e)
-    } finally {
-      this.loading = false
+    }
+  },
+  methods: {
+    async fetchCartItems() {
+      this.loading = true
+      this.errorMessage = ''
+      try {
+        const response = await api.get('/orders/')
+        
+        console.log('Cart response:', response.data) // Debug log
+        
+        // Extract items from all pending orders
+        if (response.data && response.data.success && response.data.data) {
+          let allItems = []
+          response.data.data.forEach(order => {
+            console.log('Processing order:', order) // Debug log
+            if (order.items && Array.isArray(order.items)) {
+              // Add order ID to each item for tracking
+              order.items.forEach(item => {
+                console.log('Processing item:', item) // Debug log
+                allItems.push({
+                  ...item,
+                  orderId: order._id
+                })
+              })
+            }
+          })
+          this.orders = allItems
+          console.log('Final orders:', this.orders) // Debug log
+        } else {
+          this.orders = []
+        }
+      } catch (error) {
+        console.error('Error fetching cart items:', error)
+        this.errorMessage = 'ไม่สามารถโหลดตะกร้าสินค้าได้'
+        this.orders = []
+      } finally {
+        this.loading = false
+      }
+    },
+    async fetchProducts() {
+      try {
+        const response = await api.get('/products/')
+        const productsMap = {}
+        if (response.data && response.data.success && response.data.data) {
+          response.data.data.forEach(product => {
+            productsMap[product._id] = product
+          })
+        }
+        this.products = productsMap
+      } catch (error) {
+        console.error('Error fetching products:', error)
+      }
+    },
+    getProductInfo(item) {
+      // If item.product is already populated (object), use it directly
+      if (item.product && typeof item.product === 'object' && item.product._id) {
+        return {
+          _id: item.product._id,
+          name: item.product.product_name || item.product.name || 'Unknown Product',
+          img: item.product.img || item.product.Product_img || null,
+          price: item.product.price || item.product.Product_price || item.price
+        }
+      }
+      
+      // If item.product is just an ID, try to get from products map
+      const productId = typeof item.product === 'string' ? item.product : item.product
+      const product = this.products[productId]
+      
+      if (product) {
+        return {
+          _id: product._id,
+          name: product.product_name || product.name || 'Unknown Product',
+          img: product.img || product.Product_img || null,
+          price: product.price || product.Product_price || item.price
+        }
+      }
+      
+      return { 
+        _id: productId,
+        name: 'Unknown Product', 
+        img: null,
+        price: item.price || 0
+      }
+    },
+    getItemId(item) {
+      return `${item.product}_${item.price}`
+    },
+    async increaseQty(item) {
+      try {
+        // Update the local quantity first
+        const updatedOrders = this.orders.map(order => {
+          if ((order.product._id || order.product) === item.product) {
+            return { ...order, quantity: order.quantity + 1 }
+          }
+          return order
+        })
+        
+        // Update the entire cart
+        await api.put('/orders/', {
+          items: updatedOrders.map(order => ({
+            product: order.product._id || order.product,
+            quantity: order.quantity,
+            price: order.price
+          }))
+        })
+        
+        await this.fetchCartItems()
+      } catch (error) {
+        console.error('Error updating quantity:', error)
+      }
+    },
+    async decreaseQty(item) {
+      if (item.quantity <= 1) return
+      
+      try {
+        // Update the local quantity first
+        const updatedOrders = this.orders.map(order => {
+          if ((order.product._id || order.product) === item.product) {
+            return { ...order, quantity: Math.max(1, order.quantity - 1) }
+          }
+          return order
+        })
+        
+        // Update the entire cart
+        await api.put('/orders/', {
+          items: updatedOrders.map(order => ({
+            product: order.product._id || order.product,
+            quantity: order.quantity,
+            price: order.price
+          }))
+        })
+        
+        await this.fetchCartItems()
+      } catch (error) {
+        console.error('Error updating quantity:', error)
+      }
+    },
+    async removeItem(item) {
+      try {
+        // Remove items for this product from the cart
+        const remainingOrders = this.orders.filter(order => 
+          (order.product._id || order.product) !== item.product
+        )
+        
+        // Get items to restore stock for
+        const itemsToRestore = this.orders.filter(order => 
+          (order.product._id || order.product) === item.product
+        ).map(order => ({
+          product: order.product._id || order.product,
+          quantity: order.quantity
+        }))
+        
+        // Restore stock for removed items
+        if (itemsToRestore.length > 0) {
+          await api.post('/orders/restore', {
+            items: itemsToRestore
+          })
+        }
+        
+        // Update the cart with remaining items
+        await api.put('/orders/', {
+          items: remainingOrders.map(order => ({
+            product: order.product._id || order.product,
+            quantity: order.quantity,
+            price: order.price
+          }))
+        })
+        
+        await this.fetchCartItems()
+      } catch (error) {
+        console.error('Error removing item:', error)
+        throw error
+      }
+    },
+    async clearCart() {
+      try {
+        // Restore stock for all items
+        const itemsToRestore = this.orders.map(order => ({
+          product: order.product._id || order.product,
+          quantity: order.quantity
+        }))
+        
+        if (itemsToRestore.length > 0) {
+          await api.post('/orders/restore', {
+            items: itemsToRestore
+          })
+        }
+        
+        // Clear the cart by updating with empty items array
+        await api.put('/orders/', {
+          items: []
+        })
+        
+        await this.fetchCartItems()
+      } catch (error) {
+        console.error('Error clearing cart:', error)
+        throw error
+      }
+    },
+    async applyCoupon() {
+      if (!this.couponCode.trim()) return
+      
+      try {
+        const response = await api.get(`/coupons/${this.couponCode}`)
+        this.appliedCoupon = response.data
+      } catch (error) {
+        console.error('Error applying coupon:', error)
+        alert('โค้ดส่วนลดไม่ถูกต้อง')
+      }
+    },
+    async checkout() {
+      try {
+        const orderData = {
+          items: this.mergedItems,
+          totalPrice: this.finalPrice,
+          appliedCoupon: this.appliedCoupon
+        }
+        
+        await api.post('/orders/checkout', orderData)
+        
+        // Clear cart after successful checkout
+        await this.clearCart()
+        
+        return true
+      } catch (error) {
+        console.error('Error during checkout:', error)
+        throw error
+      }
     }
   }
 }

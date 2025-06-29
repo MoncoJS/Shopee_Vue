@@ -37,15 +37,17 @@ const routes = [
     component: ProductsView,
   },
   {
-    path: "/add_products",
-    name: "add_products",
+    path: "/add_product",
+    name: "add_product",
     component: AddProductView,
+    meta: { requiresAuth: true, requiresAdmin: true },
   },
   {
     path: "/edit_product/:id",
     name: "edit_product",
     component: EditProductView,
-    props: true // Pass route params as props to component
+    props: true,
+    meta: { requiresAuth: true, requiresAdmin: true },
   },
   {
     path: "/cart",
@@ -56,6 +58,7 @@ const routes = [
     path: "/manage_users",
     name: "manage_users",
     component: UserManagement,
+    meta: { requiresAuth: true, requiresAdmin: true },
   },
 
   {

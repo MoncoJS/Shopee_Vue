@@ -90,9 +90,9 @@
                 <!-- Product Image -->
                 <div class="item-image">
                   <img
-                    v-if="getProductInfo(item).img"
-                    :src="getProductImg(getProductInfo(item).img)"
-                    :alt="getProductInfo(item).name || 'ไม่มีชื่อสินค้า'"
+                    v-if="getProductInfo(item.product).img"
+                    :src="getProductImg(getProductInfo(item.product).img)"
+                    :alt="getProductInfo(item.product).name || getProductInfo(item.product).product_name || 'ไม่มีชื่อสินค้า'"
                     class="product-img"
                     @error="onImgError($event)"
                     @load="onImgLoad($event)"
@@ -108,7 +108,7 @@
                 <!-- Product Details -->
                 <div class="item-details">
                   <h3 class="item-name">
-                    {{ getProductInfo(item).name }}
+                    {{ getProductInfo(item.product).name || getProductInfo(item.product).product_name }}
                   </h3>
                   <p class="item-price">฿{{ formatPrice(item.price) }} / ชิ้น</p>
                   
@@ -240,10 +240,60 @@
     </div>
   </div>
 </template>
+            </table>
+          </div>
+          <div class="cart-summary">
+            <div class="coupon-section mb-4">
+              <input
+                type="text"
+                v-model="couponCode"
+                placeholder="Enter coupon code"
+                class="input input-bordered w-full max-w-xs mr-2"
+              />
+              <button @click="applyCoupon" class="btn btn-secondary">Apply Coupon</button>
+              <div v-if="appliedCoupon" class="text-green-600 mt-2">Coupon {{ appliedCoupon.code }} applied!</div>
+            </div>
+            <button 
+              @click="clearCart" 
+              :disabled="clearingCart"
+              class="btn cart-clear-btn"
+            >
+              <span v-if="clearingCart" class="loader" style="margin-right:8px"></span>
+              ล้างตะกร้า
+            </button>
+            <div class="cart-total">
+              ราคารวม: <span>{{ formatPrice(totalPrice) }}</span> บาท
+            </div>
+            <div v-if="appliedCoupon" class="cart-discount text-red-500">
+              ส่วนลด: -<span>{{ formatPrice(discountAmount) }}</span> บาท
+            </div>
+            <div v-if="appliedCoupon" class="cart-final-total font-bold text-lg">
+              ราคาสุทธิ: <span>{{ formatPrice(finalPrice) }}</span> บาท
+            </div>
+          </div>
+          <div class="cart-actions">
+            <router-link to="/products"
+              class="btn cart-back-btn">
+              กลับไปเลือกสินค้า
+            </router-link>
+            <button
+              @click="checkout"
+              :disabled="checkoutLoading"
+              class="btn btn-gradient cart-checkout-btn"
+            >
+              <span v-if="checkoutLoading" class="loader" style="margin-right:8px"></span>
+              <span>สั่งซื้อ</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
 
 <script>
+import "@/styles/cart.css"
 import CartViewModel from '../viewmodels/CartViewModel.js'
-
 export default {
   name: 'CartView',
   mixins: [CartViewModel],
@@ -258,26 +308,24 @@ export default {
     getProductImg(img) {
       if (!img) return '';
       if (/^https?:\/\//.test(img)) return img;
-      
       const baseUrl = process.env.VUE_APP_API_BASE_URL || 'http://localhost:3000';
-      
-      // Clean the img path
-      let cleanImg = img.replace(/^\/+/, '').replace(/^uploads\//, '');
-      
-      // Use the new image endpoint that handles CORS properly
-      return `${baseUrl}/products/image/${encodeURIComponent(cleanImg)}`;
+      // If img already starts with /uploads/, use it directly, otherwise add the prefix
+      if (img.startsWith('/uploads/')) {
+        return `${baseUrl}${img}`;
+      }
+      return `${baseUrl}/uploads/${img}`;
     },
     onImgError(event) {
       // แสดง placeholder ถ้ารูปโหลดไม่ได้
       event.target.style.display = 'none';
-      const placeholder = event.target.parentElement.querySelector('.img-placeholder');
+      const placeholder = event.target.parentElement.querySelector('.cart-img-placeholder');
       if (placeholder) {
-        placeholder.style.display = 'flex';
+        placeholder.style.display = 'inline-block';
       }
     },
     onImgLoad(event) {
       // ซ่อน placeholder เมื่อรูปโหลดสำเร็จ
-      const placeholder = event.target.parentElement.querySelector('.img-placeholder');
+      const placeholder = event.target.parentElement.querySelector('.cart-img-placeholder');
       if (placeholder) {
         placeholder.style.display = 'none';
       }
@@ -293,9 +341,6 @@ export default {
       this.removingItems.push(itemId);
       try {
         await this.$options.mixins[0].methods.removeItem.call(this, item);
-        this.$notify.success('ลบสินค้าออกจากตะกร้าแล้ว');
-      } catch (error) {
-        this.$notify.error('เกิดข้อผิดพลาดในการลบสินค้า');
       } finally {
         this.removingItems = this.removingItems.filter(id => id !== itemId);
       }
@@ -303,14 +348,9 @@ export default {
     async clearCart() {
       if (this.clearingCart) return;
       
-      if (!confirm('คุณต้องการล้างสินค้าทั้งหมดในตะกร้าหรือไม่?')) return;
-      
       this.clearingCart = true;
       try {
         await this.$options.mixins[0].methods.clearCart.call(this);
-        this.$notify.success('ล้างตะกร้าสินค้าแล้ว');
-      } catch (error) {
-        this.$notify.error('เกิดข้อผิดพลาดในการล้างตะกร้า');
       } finally {
         this.clearingCart = false;
       }
@@ -320,662 +360,11 @@ export default {
       this.checkoutLoading = true;
       try {
         await this.$options.mixins[0].methods.checkout.call(this);
-        this.$notify.success('สั่งซื้อสำเร็จ!');
-        // Reload to refresh the cart
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
-      } catch (error) {
-        this.$notify.error('เกิดข้อผิดพลาดในการสั่งซื้อ');
+        window.location.reload();
       } finally {
         this.checkoutLoading = false;
-      }
-    },
-    async fetchCartItems() {
-      // Call the mixin method to retry fetching cart items
-      if (this.$options.mixins[0].methods.fetchCartItems) {
-        await this.$options.mixins[0].methods.fetchCartItems.call(this);
       }
     }
   }
 }
 </script>
-
-<style scoped>
-.cart-page {
-  min-height: 100vh;
-  background: linear-gradient(to bottom, #f8f9fa, #ffffff);
-}
-
-.cart-header {
-  background: linear-gradient(135deg, #ee4d2d 0%, #ff6b35 100%);
-  color: white;
-  padding: 2rem 0;
-}
-
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 1rem;
-}
-
-.cart-title {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
-}
-
-.cart-icon {
-  width: 32px;
-  height: 32px;
-}
-
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  opacity: 0.9;
-}
-
-.breadcrumb-link {
-  color: rgba(255, 255, 255, 0.8);
-  text-decoration: none;
-  transition: color 0.2s;
-}
-
-.breadcrumb-link:hover {
-  color: white;
-}
-
-.breadcrumb-separator {
-  margin: 0 0.25rem;
-}
-
-.breadcrumb-current {
-  color: white;
-  font-weight: 500;
-}
-
-.cart-content {
-  padding: 2rem 0;
-}
-
-.loading-state, .error-state {
-  text-align: center;
-  padding: 3rem 1rem;
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid #f3f3f3;
-  border-top: 3px solid #ee4d2d;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 1rem;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.error-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-}
-
-.retry-btn {
-  background: #ee4d2d;
-  color: white;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: background 0.2s;
-  margin-top: 1rem;
-}
-
-.retry-btn:hover {
-  background: #d63918;
-}
-
-.empty-cart {
-  text-align: center;
-  padding: 4rem 1rem;
-}
-
-.empty-cart-illustration {
-  margin-bottom: 2rem;
-}
-
-.empty-cart-illustration svg {
-  width: 200px;
-  height: 160px;
-  max-width: 100%;
-}
-
-.empty-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 1rem;
-}
-
-.empty-message {
-  color: #666;
-  margin-bottom: 2rem;
-  font-size: 1.1rem;
-}
-
-.shop-now-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: #ee4d2d;
-  color: white;
-  padding: 1rem 2rem;
-  border-radius: 12px;
-  text-decoration: none;
-  font-weight: 600;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(238, 77, 45, 0.3);
-}
-
-.shop-now-btn:hover {
-  background: #d63918;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(238, 77, 45, 0.4);
-}
-
-.shop-now-btn svg {
-  width: 20px;
-  height: 20px;
-}
-
-.cart-layout {
-  display: grid;
-  grid-template-columns: 1fr 400px;
-  gap: 2rem;
-  align-items: start;
-}
-
-.cart-items-section {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem;
-  border-bottom: 1px solid #eee;
-}
-
-.section-header h2 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #333;
-  margin: 0;
-}
-
-.clear-all-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: #dc3545;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: background 0.2s;
-}
-
-.clear-all-btn:hover:not(:disabled) {
-  background: #c82333;
-}
-
-.clear-all-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.clear-all-btn svg {
-  width: 16px;
-  height: 16px;
-}
-
-.cart-items {
-  padding: 0;
-}
-
-.cart-item {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1.5rem;
-  border-bottom: 1px solid #f0f0f0;
-  transition: background 0.2s;
-}
-
-.cart-item:hover {
-  background: #fafafa;
-}
-
-.cart-item:last-child {
-  border-bottom: none;
-}
-
-.item-image {
-  flex-shrink: 0;
-  width: 80px;
-  height: 80px;
-  position: relative;
-}
-
-.product-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 8px;
-  background: #f8f9fa;
-}
-
-.img-placeholder {
-  width: 100%;
-  height: 100%;
-  background: #f0f0f0;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #999;
-}
-
-.img-placeholder svg {
-  width: 32px;
-  height: 32px;
-}
-
-.item-details {
-  flex: 1;
-  min-width: 0;
-}
-
-.item-name {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 0.5rem;
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.item-price {
-  color: #666;
-  margin-bottom: 0.75rem;
-}
-
-.quantity-section {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.quantity-controls {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.qty-btn {
-  width: 32px;
-  height: 32px;
-  border: 1px solid #ddd;
-  background: white;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.qty-btn:hover:not(:disabled) {
-  border-color: #ee4d2d;
-  color: #ee4d2d;
-}
-
-.qty-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.qty-btn svg {
-  width: 16px;
-  height: 16px;
-}
-
-.qty-display {
-  min-width: 40px;
-  text-align: center;
-  font-weight: 600;
-  padding: 0.5rem;
-}
-
-.item-total {
-  text-align: right;
-}
-
-.total-label {
-  display: block;
-  font-size: 0.85rem;
-  color: #666;
-  margin-bottom: 0.25rem;
-}
-
-.total-price {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #ee4d2d;
-}
-
-.remove-btn {
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  background: #dc3545;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.2s;
-}
-
-.remove-btn:hover:not(:disabled) {
-  background: #c82333;
-}
-
-.remove-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.remove-btn svg {
-  width: 18px;
-  height: 18px;
-}
-
-.order-summary-section {
-  position: sticky;
-  top: 2rem;
-}
-
-.order-summary {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-}
-
-.summary-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 1.5rem;
-}
-
-.coupon-section {
-  margin-bottom: 1.5rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 1px solid #eee;
-}
-
-.coupon-section h4 {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 1rem;
-}
-
-.coupon-input-group {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
-}
-
-.coupon-input {
-  flex: 1;
-  padding: 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.coupon-input:focus {
-  border-color: #ee4d2d;
-}
-
-.apply-coupon-btn {
-  background: #28a745;
-  color: white;
-  border: none;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: background 0.2s;
-  white-space: nowrap;
-}
-
-.apply-coupon-btn:hover {
-  background: #218838;
-}
-
-.applied-coupon {
-  margin-top: 0.75rem;
-}
-
-.coupon-success {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: #28a745;
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-.coupon-success svg {
-  width: 16px;
-  height: 16px;
-}
-
-.price-breakdown {
-  margin-bottom: 1.5rem;
-}
-
-.price-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.5rem 0;
-}
-
-.price-row.discount {
-  color: #28a745;
-}
-
-.price-row.shipping {
-  border-bottom: 1px solid #eee;
-  margin-bottom: 0.75rem;
-  padding-bottom: 0.75rem;
-}
-
-.free-shipping {
-  color: #28a745;
-  font-weight: 600;
-}
-
-.price-row.total {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #333;
-  border-top: 2px solid #eee;
-  padding-top: 0.75rem;
-  margin-top: 0.75rem;
-}
-
-.action-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.continue-shopping-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  border: 2px solid #ee4d2d;
-  color: #ee4d2d;
-  background: white;
-  border-radius: 8px;
-  text-decoration: none;
-  font-weight: 600;
-  transition: all 0.2s;
-}
-
-.continue-shopping-btn:hover {
-  background: #ee4d2d;
-  color: white;
-}
-
-.continue-shopping-btn svg {
-  width: 18px;
-  height: 18px;
-}
-
-.checkout-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  background: #ee4d2d;
-  color: white;
-  border: none;
-  padding: 1rem;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 1rem;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(238, 77, 45, 0.3);
-}
-
-.checkout-btn:hover:not(:disabled) {
-  background: #d63918;
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(238, 77, 45, 0.4);
-}
-
-.checkout-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.checkout-btn svg {
-  width: 18px;
-  height: 18px;
-}
-
-.loading-icon {
-  animation: spin 1s linear infinite;
-}
-
-/* Mobile Responsiveness */
-@media (max-width: 768px) {
-  .cart-layout {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-
-  .order-summary-section {
-    position: static;
-    order: -1;
-  }
-
-  .cart-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-    padding: 1rem;
-  }
-
-  .item-image {
-    width: 100%;
-    height: 200px;
-  }
-
-  .quantity-section {
-    width: 100%;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .quantity-controls {
-    justify-content: center;
-  }
-
-  .coupon-input-group {
-    flex-direction: column;
-  }
-
-  .action-buttons {
-    gap: 1rem;
-  }
-
-  .cart-title {
-    font-size: 1.5rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .container {
-    padding: 0 0.75rem;
-  }
-
-  .cart-item {
-    padding: 0.75rem;
-  }
-
-  .section-header {
-    padding: 1rem;
-    flex-direction: column;
-    gap: 1rem;
-    align-items: stretch;
-  }
-
-  .section-header h2 {
-    text-align: center;
-  }
-}
-</style>

@@ -1,67 +1,309 @@
 <template>
-  <div class="register-bg">
-    <div class="register-container">
-      <h2 class="register-title">สมัครสมาชิก</h2>
-      <form @submit.prevent="register">
-        <div class="form-group">
-          <label class="form-label">ชื่อผู้ใช้</label>
-          <input v-model="form.username" type="text" required class="input input-bordered" />
+  <div class="register-container">
+    <div class="register-card">
+      <div class="register-header">
+        <h1>🛒 สมัครสมาชิก Shopee</h1>
+        <p>สร้างบัญชีใหม่เพื่อเริ่มต้นช้อปปิ้ง</p>
+      </div>
+
+      <form @submit.prevent="handleRegister" class="register-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="firstName">ชื่อ</label>
+            <input
+              id="firstName"
+              type="text"
+              v-model="form.firstName"
+              placeholder="กรอกชื่อ"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="lastName">นามสกุล</label>
+            <input
+              id="lastName"
+              type="text"
+              v-model="form.lastName"
+              placeholder="กรอกนามสกุล"
+              required
+            />
+          </div>
         </div>
+
         <div class="form-group">
-          <label class="form-label">อีเมล</label>
-          <input v-model="form.email" type="email" required class="input input-bordered" />
+          <label for="username">ชื่อผู้ใช้</label>
+          <input
+            id="username"
+            type="text"
+            v-model="form.username"
+            placeholder="กรอกชื่อผู้ใช้"
+            required
+          />
         </div>
+
         <div class="form-group">
-          <label class="form-label">รหัสผ่าน</label>
-          <input v-model="form.password" type="password" required minlength="6" class="input input-bordered" />
+          <label for="email">อีเมล</label>
+          <input
+            id="email"
+            type="email"
+            v-model="form.email"
+            placeholder="กรอกอีเมล"
+            required
+          />
         </div>
-        <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
-        <button type="submit" class="btn btn-gradient">
-          สมัครสมาชิก
+
+        <div class="form-group">
+          <label for="password">รหัสผ่าน</label>
+          <input
+            id="password"
+            type="password"
+            v-model="form.password"
+            placeholder="กรอกรหัสผ่าน"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="confirmPassword">ยืนยันรหัสผ่าน</label>
+          <input
+            id="confirmPassword"
+            type="password"
+            v-model="form.confirmPassword"
+            placeholder="กรอกรหัสผ่านอีกครั้ง"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="gender">เพศ</label>
+          <select id="gender" v-model="form.gender">
+            <option value="">เลือกเพศ</option>
+            <option value="male">ชาย</option>
+            <option value="female">หญิง</option>
+            <option value="other">อื่นๆ</option>
+          </select>
+        </div>
+
+        <button type="submit" :disabled="loading" class="register-btn">
+          <span v-if="loading">กำลังสมัครสมาชิก...</span>
+          <span v-else>สมัครสมาชิก</span>
         </button>
+
+        <div v-if="errorMessage" class="error-message">
+          {{ errorMessage }}
+        </div>
+
+        <div v-if="successMessage" class="success-message">
+          {{ successMessage }}
+        </div>
       </form>
+
       <div class="register-footer">
-        มีบัญชีอยู่แล้ว?
-        <router-link to="/login" class="register-link">เข้าสู่ระบบ</router-link>
+        <p>มีบัญชีอยู่แล้ว? <router-link to="/login">เข้าสู่ระบบ</router-link></p>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import "@/styles/login_register.css"
-import api from '@/services/api'
+import api from '@/services/api';
+
 export default {
-  name: "RegisterView",
+  name: 'RegisterView',
   data() {
     return {
       form: {
-        username: "",
-        password: "",
-        email: ""
+        firstName: '',
+        lastName: '',
+        username: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        gender: ''
       },
-      errorMessage: ""
-    }
+      loading: false,
+      errorMessage: '',
+      successMessage: ''
+    };
   },
   methods: {
-    async register() {
-      this.errorMessage = "";
-      // ตรวจสอบข้อมูลเบื้องต้น
-      if (!this.form.username || !this.form.password || !this.form.email) {
-        this.errorMessage = "กรุณากรอกข้อมูลให้ครบถ้วน";
+    async handleRegister() {
+      this.loading = true;
+      this.errorMessage = '';
+      this.successMessage = '';
+
+      // Validate passwords match
+      if (this.form.password !== this.form.confirmPassword) {
+        this.errorMessage = 'รหัสผ่านไม่ตรงกัน';
+        this.loading = false;
         return;
       }
+
       try {
-        const response = await api.post('/users/', this.form);
+        const registerData = {
+          username: this.form.username,
+          email: this.form.email,
+          password: this.form.password
+        };
+        const response = await api.post('/auth/register', registerData);
+        
         if (response.data.success) {
-          this.$router.push("/login");
+          this.successMessage = 'สมัครสมาชิกสำเร็จ! กำลังเปลี่ยนเส้นทางไปหน้าเข้าสู่ระบบ...';
+          
+          setTimeout(() => {
+            this.$router.push('/login');
+          }, 2000);
         } else {
-          this.errorMessage = response.data.message || "สมัครสมาชิกไม่สำเร็จ";
+          this.errorMessage = response.data.message || 'สมัครสมาชิกไม่สำเร็จ';
         }
       } catch (error) {
-        this.errorMessage = error.response?.data?.message || "เกิดข้อผิดพลาดในการสมัครสมาชิก";
+        this.errorMessage = error.response?.data?.message || 'เกิดข้อผิดพลาดในการสมัครสมาชิก';
+      } finally {
+        this.loading = false;
       }
     }
+  },
+  mounted() {
+    // Redirect if already logged in
+    if (localStorage.getItem('token')) {
+      this.$router.push('/products');
+    }
+  }
+};
+</script>
+
+<style scoped>
+.register-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+}
+
+.register-card {
+  background: white;
+  border-radius: 10px;
+  padding: 40px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 500px;
+}
+
+.register-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.register-header h1 {
+  color: #333;
+  margin-bottom: 10px;
+  font-size: 28px;
+}
+
+.register-header p {
+  color: #666;
+  margin: 0;
+}
+
+.register-form {
+  margin-bottom: 20px;
+}
+
+.form-row {
+  display: flex;
+  gap: 15px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+  flex: 1;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  color: #333;
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e1e5e9;
+  border-radius: 6px;
+  font-size: 16px;
+  transition: border-color 0.3s;
+  box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.register-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 14px;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.register-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.register-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.error-message {
+  background: #fee;
+  color: #c33;
+  padding: 10px;
+  border-radius: 4px;
+  margin-top: 15px;
+  text-align: center;
+}
+
+.success-message {
+  background: #efe;
+  color: #3c3;
+  padding: 10px;
+  border-radius: 4px;
+  margin-top: 15px;
+  text-align: center;
+}
+
+.register-footer {
+  text-align: center;
+  margin-top: 20px;
+}
+
+.register-footer a {
+  color: #667eea;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.register-footer a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 600px) {
+  .form-row {
+    flex-direction: column;
+    gap: 0;
   }
 }
-</script>
+</style>

@@ -5,8 +5,10 @@ import router from "./router";
 import store from "./store";
 import axios from "axios";
 import VueAxios from "vue-axios";
+import { NotificationPlugin } from "./services/notification";
 
 Vue.use(VueAxios, axios);
+Vue.use(NotificationPlugin);
 Vue.config.productionTip = false;
 
 new Vue({
