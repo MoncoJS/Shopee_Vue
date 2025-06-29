@@ -55,9 +55,33 @@ export default {
     }
   },
   async mounted() {
+    console.log('CartViewModel mounted, isLoggedIn:', this.isLoggedIn) // Debug log
+    
+    // Try to fetch user first to ensure authentication is initialized
+    try {
+      await this.$store.dispatch('fetchUser')
+      console.log('After fetchUser, isLoggedIn:', this.isLoggedIn) // Debug log
+    } catch (error) {
+      console.error('Error fetching user:', error)
+    }
+    
+    // Now check if logged in and fetch cart data
     if (this.isLoggedIn) {
       await this.fetchCartItems()
       await this.fetchProducts()
+    }
+  },
+  watch: {
+    // Watch for login state changes
+    isLoggedIn(newVal) {
+      console.log('Login state changed:', newVal) // Debug log
+      if (newVal) {
+        this.fetchCartItems()
+        this.fetchProducts()
+      } else {
+        this.orders = []
+        this.products = {}
+      }
     }
   },
   methods: {
@@ -144,7 +168,8 @@ export default {
       }
     },
     getItemId(item) {
-      return `${item.product}_${item.price}`
+      const productId = item.product._id || item.product
+      return `${productId}_${item.price}`
     },
     async increaseQty(item) {
       try {
@@ -198,27 +223,43 @@ export default {
     },
     async removeItem(item) {
       try {
+        console.log('Removing item:', item) // Debug log
+        
+        // Get the product ID to compare
+        const productId = item.product._id || item.product
+        console.log('Product ID to remove:', productId) // Debug log
+        console.log('Current orders:', this.orders) // Debug log
+        
         // Remove items for this product from the cart
-        const remainingOrders = this.orders.filter(order => 
-          (order.product._id || order.product) !== item.product
-        )
+        const remainingOrders = this.orders.filter(order => {
+          const orderProductId = order.product._id || order.product
+          console.log('Comparing:', orderProductId, 'with:', productId) // Debug log
+          return orderProductId !== productId
+        })
+        
+        console.log('Remaining orders after filter:', remainingOrders) // Debug log
         
         // Get items to restore stock for
-        const itemsToRestore = this.orders.filter(order => 
-          (order.product._id || order.product) === item.product
-        ).map(order => ({
+        const itemsToRestore = this.orders.filter(order => {
+          const orderProductId = order.product._id || order.product
+          return orderProductId === productId
+        }).map(order => ({
           product: order.product._id || order.product,
           quantity: order.quantity
         }))
         
+        console.log('Items to restore:', itemsToRestore) // Debug log
+        
         // Restore stock for removed items
         if (itemsToRestore.length > 0) {
+          console.log('Restoring stock...')
           await api.post('/orders/restore', {
             items: itemsToRestore
           })
         }
         
         // Update the cart with remaining items
+        console.log('Updating cart with remaining items...')
         await api.put('/orders/', {
           items: remainingOrders.map(order => ({
             product: order.product._id || order.product,
@@ -227,6 +268,7 @@ export default {
           }))
         })
         
+        console.log('Fetching updated cart...')
         await this.fetchCartItems()
       } catch (error) {
         console.error('Error removing item:', error)

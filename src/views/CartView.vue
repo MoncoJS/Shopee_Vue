@@ -35,7 +35,7 @@
         </div>
 
         <!-- Empty Cart -->
-        <div v-else-if="mergedItems.length === 0" class="empty-cart">
+        <div v-else-if="!loading && mergedItems.length === 0" class="empty-cart">
           <div class="empty-cart-illustration">
             <svg viewBox="0 0 200 160" fill="none">
               <!-- Cart -->

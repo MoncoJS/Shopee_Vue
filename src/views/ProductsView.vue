@@ -234,6 +234,20 @@ export default {
       }
     }
   },
+  async created() {
+    // Fetch products when component is created (including when navigating back)
+    if (this.$options.mixins[0].methods.fetchProducts) {
+      await this.$options.mixins[0].methods.fetchProducts.call(this);
+    }
+  },
+  async beforeRouteEnter(to, from, next) {
+    next(async vm => {
+      // Refresh products when entering this route
+      if (vm.$options.mixins[0].methods.fetchProducts) {
+        await vm.$options.mixins[0].methods.fetchProducts.call(vm);
+      }
+    });
+  },
   watch: {
     products: {
       handler(newProducts) {
