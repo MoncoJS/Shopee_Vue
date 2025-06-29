@@ -132,6 +132,37 @@ export default {
       this.errorMessage = '';
       this.successMessage = '';
 
+      // Validate required fields
+      if (!this.form.firstName.trim()) {
+        this.errorMessage = 'กรุณากรอกชื่อ';
+        this.loading = false;
+        return;
+      }
+
+      if (!this.form.lastName.trim()) {
+        this.errorMessage = 'กรุณากรอกนามสกุล';
+        this.loading = false;
+        return;
+      }
+
+      if (!this.form.username.trim()) {
+        this.errorMessage = 'กรุณากรอกชื่อผู้ใช้';
+        this.loading = false;
+        return;
+      }
+
+      if (!this.form.email.trim()) {
+        this.errorMessage = 'กรุณากรอกอีเมล';
+        this.loading = false;
+        return;
+      }
+
+      if (!this.form.password) {
+        this.errorMessage = 'กรุณากรอกรหัสผ่าน';
+        this.loading = false;
+        return;
+      }
+
       // Validate passwords match
       if (this.form.password !== this.form.confirmPassword) {
         this.errorMessage = 'รหัสผ่านไม่ตรงกัน';
@@ -139,12 +170,23 @@ export default {
         return;
       }
 
+      // Validate password strength
+      if (this.form.password.length < 6) {
+        this.errorMessage = 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
+        this.loading = false;
+        return;
+      }
+
       try {
         const registerData = {
-          username: this.form.username,
-          email: this.form.email,
-          password: this.form.password
+          username: this.form.username.trim(),
+          email: this.form.email.trim(),
+          password: this.form.password,
+          firstName: this.form.firstName.trim(),
+          lastName: this.form.lastName.trim(),
+          gender: this.form.gender || ''
         };
+        
         const response = await api.post('/auth/register', registerData);
         
         if (response.data.success) {
@@ -157,7 +199,13 @@ export default {
           this.errorMessage = response.data.message || 'สมัครสมาชิกไม่สำเร็จ';
         }
       } catch (error) {
-        this.errorMessage = error.response?.data?.message || 'เกิดข้อผิดพลาดในการสมัครสมาชิก';
+        if (error.response?.status === 400) {
+          this.errorMessage = error.response.data?.message || 'ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง';
+        } else if (error.response?.status === 409) {
+          this.errorMessage = 'ชื่อผู้ใช้หรืออีเมลนี้ถูกใช้ไปแล้ว';
+        } else {
+          this.errorMessage = error.response?.data?.message || 'เกิดข้อผิดพลาดในการสมัครสมาชิก';
+        }
       } finally {
         this.loading = false;
       }
