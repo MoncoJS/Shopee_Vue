@@ -80,6 +80,7 @@
             :key="product._id"
             class="product-card"
             :class="{ 'out-of-stock': product.amount <= 0 }"
+            @click="showProductDetail(product)"
           >
             <!-- Product Image -->
             <div class="product-image-container">
@@ -96,6 +97,7 @@
                 <svg viewBox="0 0 24 24" fill="currentColor">
                   <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
                 </svg>
+                <span>ไม่มีรูปภาพ</span>
               </div>
               
               <!-- Stock Badge -->
@@ -103,7 +105,7 @@
               <div v-else-if="product.amount <= 5" class="stock-badge low-stock">เหลือน้อย</div>
               
               <!-- Admin Actions -->
-              <div v-if="isAdmin" class="admin-actions">
+              <div v-if="isAdmin" class="admin-actions" @click.stop>
                 <router-link 
                   :to="{ name: 'edit_product', params: { id: product._id } }" 
                   class="admin-btn edit-btn"
@@ -121,12 +123,22 @@
                 >
                   <svg v-if="isDeletingProduct === product._id" class="loading-icon" viewBox="0 0 24 24">
                     <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.3"/>
-                    <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                    <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                   </svg>
                   <svg v-else viewBox="0 0 24 24" fill="currentColor">
                     <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
                   </svg>
                 </button>
+              </div>
+
+              <!-- View Detail Overlay -->
+              <div class="detail-overlay">
+                <div class="detail-btn">
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                  </svg>
+                  <span>ดูรายละเอียด</span>
+                </div>
               </div>
             </div>
 
@@ -145,7 +157,7 @@
               </div>
 
               <!-- Add to Cart Section -->
-              <div class="cart-section">
+              <div class="cart-section" @click.stop>
                 <div class="quantity-controls" v-if="product.amount > 0">
                   <button 
                     @click="decreaseQuantity(product._id)" 
@@ -198,6 +210,174 @@
         </div>
       </div>
     </div>
+
+    <!-- Product Detail Modal -->
+    <div v-if="showProductModal" class="modal-overlay" @click="closeProductModal">
+      <div class="product-modal" @click.stop>
+        <div class="modal-header">
+          <h3>รายละเอียดสินค้า</h3>
+          <button @click="closeProductModal" class="close-btn">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            </svg>
+          </button>
+        </div>
+
+        <div v-if="selectedProduct" class="modal-body">
+          <div class="product-detail-content">
+            <!-- Product Image Section -->
+            <div class="product-detail-image">
+              <div class="main-image">
+                <img
+                  v-if="selectedProduct.img"
+                  :src="getProductImg(selectedProduct.img)"
+                  :alt="selectedProduct.product_name"
+                  class="detail-image"
+                  @error="onImgError"
+                />
+                <div v-else class="detail-image-placeholder">
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                  </svg>
+                  <p>ไม่มีรูปภาพ</p>
+                </div>
+              </div>
+              
+              <!-- Stock Status -->
+              <div class="stock-status">
+                <div v-if="selectedProduct.amount <= 0" class="status-badge out-of-stock">
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                  </svg>
+                  หมดสต๊อก
+                </div>
+                <div v-else-if="selectedProduct.amount <= 5" class="status-badge low-stock">
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+                  </svg>
+                  เหลือน้อย ({{ selectedProduct.amount }} ชิ้น)
+                </div>
+                <div v-else class="status-badge in-stock">
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                  </svg>
+                  พร้อมส่ง ({{ selectedProduct.amount }} ชิ้น)
+                </div>
+              </div>
+            </div>
+
+            <!-- Product Details Section -->
+            <div class="product-detail-info">
+              <div class="product-title-section">
+                <h2 class="detail-product-name">{{ selectedProduct.product_name }}</h2>
+                <div class="product-price-large">
+                  <span class="price-currency">฿</span>
+                  <span class="price-amount">{{ formatPrice(selectedProduct.price) }}</span>
+                  <span class="price-unit">/ ชิ้น</span>
+                </div>
+              </div>
+
+              <!-- Product Description -->
+              <div class="product-description-section">
+                <h4>รายละเอียดสินค้า</h4>
+                <div class="description-content">
+                  <p v-if="selectedProduct.description" class="full-description">
+                    {{ selectedProduct.description }}
+                  </p>
+                  <p v-else class="no-description">
+                    ไม่มีรายละเอียดสินค้า
+                  </p>
+                </div>
+              </div>
+
+              <!-- Product Info Grid -->
+              <div class="product-info-grid">
+                <div class="info-item">
+                  <div class="info-label">จำนวนคงเหลือ</div>
+                  <div class="info-value">{{ selectedProduct.amount }} ชิ้น</div>
+                </div>
+                <div class="info-item">
+                  <div class="info-label">ราคาต่อหน่วย</div>
+                  <div class="info-value">฿{{ formatPrice(selectedProduct.price) }}</div>
+                </div>
+                <div class="info-item">
+                  <div class="info-label">สถานะ</div>
+                  <div class="info-value">
+                    <span :class="selectedProduct.amount > 0 ? 'text-success' : 'text-danger'">
+                      {{ selectedProduct.amount > 0 ? 'พร้อมขาย' : 'หมดสต๊อก' }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Actions Section -->
+              <div class="modal-actions">
+                <div v-if="selectedProduct.amount > 0" class="quantity-section-modal">
+                  <label class="quantity-label">จำนวน:</label>
+                  <div class="quantity-controls-modal">
+                    <button 
+                      @click="decreaseModalQuantity" 
+                      :disabled="modalQuantity <= 1"
+                      class="qty-btn-modal"
+                    >
+                      <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 13H5v-2h14v2z"/>
+                      </svg>
+                    </button>
+                    <input 
+                      type="number" 
+                      min="1" 
+                      :max="selectedProduct.amount" 
+                      v-model.number="modalQuantity"
+                      class="qty-input-modal"
+                    />
+                    <button 
+                      @click="increaseModalQuantity" 
+                      :disabled="modalQuantity >= selectedProduct.amount"
+                      class="qty-btn-modal"
+                    >
+                      <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="action-buttons">
+                  <button
+                    v-if="selectedProduct.amount > 0"
+                    @click="addToCartFromModal"
+                    :disabled="isAddingToCart === selectedProduct._id"
+                    class="add-to-cart-modal-btn"
+                  >
+                    <svg v-if="isAddingToCart === selectedProduct._id" class="loading-icon" viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.3"/>
+                      <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                    </svg>
+                    <svg v-else viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12L8.1 13h7.45c.75 0 1.41-.41 1.75-1.03L21.7 4H5.21l-.94-2H1zm16 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                    </svg>
+                    <span v-if="isAddingToCart === selectedProduct._id">กำลังเพิ่มลงตะกร้า...</span>
+                    <span v-else>เพิ่มลงตะกร้า</span>
+                  </button>
+                  
+                  <button v-else class="out-of-stock-btn" disabled>
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                    สินค้าหมด
+                  </button>
+
+                  <button @click="closeProductModal" class="close-modal-btn">
+                    ปิด
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -218,7 +398,11 @@ export default {
       // Ensure products is always an array
       products: [],
       // Track quantities for each product - always initialize as object
-      quantities: {}
+      quantities: {},
+      // Product detail modal
+      showProductModal: false,
+      selectedProduct: null,
+      modalQuantity: 1
     }
   },
   computed: {
@@ -391,6 +575,51 @@ export default {
         this.$notify.error('เกิดข้อผิดพลาดในการลบสินค้า');
       } finally {
         this.isDeletingProduct = null;
+      }
+    },
+
+    // Product detail modal methods
+    showProductDetail(product) {
+      this.selectedProduct = product;
+      this.modalQuantity = 1;
+      this.showProductModal = true;
+      // Prevent body scroll when modal is open
+      document.body.style.overflow = 'hidden';
+    },
+
+    closeProductModal() {
+      this.showProductModal = false;
+      this.selectedProduct = null;
+      this.modalQuantity = 1;
+      // Restore body scroll
+      document.body.style.overflow = '';
+    },
+
+    increaseModalQuantity() {
+      if (this.selectedProduct && this.modalQuantity < this.selectedProduct.amount) {
+        this.modalQuantity++;
+      }
+    },
+
+    decreaseModalQuantity() {
+      if (this.modalQuantity > 1) {
+        this.modalQuantity--;
+      }
+    },
+
+    async addToCartFromModal() {
+      if (!this.selectedProduct || this.isAddingToCart === this.selectedProduct._id) return;
+      
+      // Set the quantity for this product
+      this.setQuantity(this.selectedProduct._id, this.modalQuantity);
+      
+      try {
+        await this.addToCart(this.selectedProduct);
+        this.$notify.success(`เพิ่ม "${this.selectedProduct.product_name}" ลงตะกร้าแล้ว (${this.modalQuantity} ชิ้น)`);
+        this.closeProductModal();
+      } catch (error) {
+        console.error('Error adding to cart from modal:', error);
+        this.$notify.error('เกิดข้อผิดพลาดในการเพิ่มสินค้าลงตะกร้า');
       }
     }
   }
@@ -605,20 +834,23 @@ export default {
 
 .products-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 2rem;
   padding: 1rem 0;
 }
 
 .product-card {
   background: white;
-  border-radius: 16px;
+  border-radius: 20px;
   overflow: hidden;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   position: relative;
   border: 1px solid rgba(0, 0, 0, 0.05);
   backdrop-filter: blur(10px);
+  min-height: 480px; /* Increased to accommodate larger image */
+  display: flex;
+  flex-direction: column;
 }
 
 .product-card::before {
@@ -652,22 +884,26 @@ export default {
 
 .product-image-container {
   position: relative;
-  height: 220px;
+  height: 320px; /* Increased height for more prominent image display */
   overflow: hidden;
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
   z-index: 2;
+  border-radius: 20px 20px 0 0;
 }
 
 .product-image {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: cover; /* Ensures image fills container while maintaining aspect ratio */
+  object-position: center;
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   filter: brightness(1.05) contrast(1.05);
+  display: block;
+  background-color: #f8f9fa; /* Fallback background while loading */
 }
 
 .product-card:hover .product-image {
-  transform: scale(1.08);
+  transform: scale(1.05); /* Slightly reduced scale for better performance */
   filter: brightness(1.1) contrast(1.1);
 }
 
@@ -675,11 +911,21 @@ export default {
   width: 100%;
   height: 100%;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%);
   color: #999;
   position: relative;
+  font-size: 14px;
+  text-align: center;
+}
+
+.product-image-placeholder svg {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 12px;
+  opacity: 0.6;
 }
 
 .product-image-placeholder::before {
@@ -691,6 +937,14 @@ export default {
   bottom: 0;
   background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="%23f5f5f5" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
   opacity: 0.3;
+}
+
+.product-image-placeholder svg {
+  width: 64px;
+  height: 64px;
+  z-index: 1;
+  position: relative;
+  margin-bottom: 0.5rem;
 }
 
 .product-image-placeholder svg {
@@ -807,6 +1061,10 @@ export default {
   background: white;
   position: relative;
   z-index: 2;
+  flex-grow: 1; /* Take up remaining space in flex container */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 .product-name {
@@ -943,6 +1201,466 @@ export default {
   animation: spin 1s linear infinite;
 }
 
+/* Product Detail Modal Styles */
+.product-card {
+  cursor: pointer;
+  position: relative;
+}
+
+.detail-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  border-radius: 16px;
+}
+
+.product-card:hover .detail-overlay {
+  opacity: 1;
+}
+
+.detail-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: white;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-align: center;
+  pointer-events: none;
+}
+
+.detail-btn svg {
+  width: 32px;
+  height: 32px;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.product-modal {
+  background: white;
+  border-radius: 20px;
+  max-width: 900px;
+  width: 95%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(135deg, #f8f9fa, #ffffff);
+  border-radius: 20px 20px 0 0;
+}
+
+.modal-header h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin: 0;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: background 0.2s;
+  color: #6b7280;
+}
+
+.close-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.close-btn svg {
+  width: 24px;
+  height: 24px;
+}
+
+.modal-body {
+  padding: 2rem;
+}
+
+.product-detail-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+.product-detail-image {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.main-image {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #f8f9fa;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.detail-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.detail-image:hover {
+  transform: scale(1.05);
+}
+
+.detail-image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+}
+
+.detail-image-placeholder svg {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 1rem;
+}
+
+.stock-status {
+  display: flex;
+  justify-content: center;
+}
+
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.status-badge.in-stock {
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+  color: #065f46;
+}
+
+.status-badge.low-stock {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  color: #92400e;
+}
+
+.status-badge.out-of-stock {
+  background: linear-gradient(135deg, #fecaca, #fca5a5);
+  color: #991b1b;
+}
+
+.status-badge svg {
+  width: 18px;
+  height: 18px;
+}
+
+.product-detail-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.product-title-section {
+  text-align: center;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.detail-product-name {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0 0 1rem 0;
+  line-height: 1.3;
+}
+
+.product-price-large {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.25rem;
+}
+
+.price-currency {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #ee4d2d;
+}
+
+.price-amount {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #ee4d2d;
+  background: linear-gradient(135deg, #ee4d2d, #ff6b35);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.price-unit {
+  font-size: 1rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.product-description-section h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 0.75rem 0;
+}
+
+.description-content {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 12px;
+  border-left: 4px solid #ee4d2d;
+}
+
+.full-description {
+  color: #4b5563;
+  line-height: 1.6;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.no-description {
+  color: #9ca3af;
+  font-style: italic;
+  margin: 0;
+}
+
+.product-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.info-item {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.info-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.info-value {
+  font-size: 0.95rem;
+  color: #374151;
+  font-weight: 600;
+}
+
+.text-success {
+  color: #059669;
+}
+
+.text-danger {
+  color: #dc2626;
+}
+
+.modal-actions {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-top: 1rem;
+}
+
+.quantity-section-modal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.quantity-label {
+  font-weight: 600;
+  color: #374151;
+}
+
+.quantity-controls-modal {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: white;
+  border-radius: 8px;
+  padding: 0.25rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.qty-btn-modal {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: #f3f4f6;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.qty-btn-modal:hover:not(:disabled) {
+  background: #ee4d2d;
+  color: white;
+}
+
+.qty-btn-modal:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.qty-btn-modal svg {
+  width: 18px;
+  height: 18px;
+}
+
+.qty-input-modal {
+  width: 60px;
+  text-align: center;
+  padding: 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.add-to-cart-modal-btn {
+  flex: 1;
+  max-width: 300px;
+  background: linear-gradient(135deg, #ee4d2d, #ff6b35);
+  color: white;
+  border: none;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 20px rgba(238, 77, 45, 0.3);
+}
+
+.add-to-cart-modal-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 30px rgba(238, 77, 45, 0.4);
+}
+
+.add-to-cart-modal-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.add-to-cart-modal-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.out-of-stock-btn {
+  flex: 1;
+  max-width: 300px;
+  background: linear-gradient(135deg, #6b7280, #9ca3af);
+  color: white;
+  border: none;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: not-allowed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.out-of-stock-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.close-modal-btn {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.close-modal-btn:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+}
+
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
   .hero-title {
@@ -954,7 +1672,7 @@ export default {
   }
 
   .products-grid {
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); /* Slightly larger minimum for better image display */
     gap: 1rem;
   }
 
@@ -965,6 +1683,51 @@ export default {
 
   .filter-actions {
     justify-content: center;
+  }
+
+  /* Modal responsive */
+  .product-modal {
+    width: 95%;
+    max-height: 95vh;
+    margin: 1rem;
+  }
+
+  .modal-header {
+    padding: 1rem 1.5rem;
+  }
+
+  .modal-header h3 {
+    font-size: 1.25rem;
+  }
+
+  .modal-body {
+    padding: 1.5rem;
+  }
+
+  .product-detail-content {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .detail-product-name {
+    font-size: 1.5rem;
+  }
+
+  .price-amount {
+    font-size: 2rem;
+  }
+
+  .product-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+  }
+
+  .add-to-cart-modal-btn,
+  .out-of-stock-btn {
+    max-width: none;
   }
 }
 
@@ -980,6 +1743,28 @@ export default {
 
   .product-card {
     margin: 0 0.5rem;
+  }
+
+  /* Modal mobile */
+  .modal-header {
+    padding: 1rem;
+  }
+
+  .modal-body {
+    padding: 1rem;
+  }
+
+  .detail-product-name {
+    font-size: 1.25rem;
+  }
+
+  .price-amount {
+    font-size: 1.75rem;
+  }
+
+  .quantity-section-modal {
+    flex-direction: column;
+    gap: 0.75rem;
   }
 }
 </style>

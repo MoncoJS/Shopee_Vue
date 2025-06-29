@@ -122,6 +122,24 @@
                     <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
                   </svg>
                 </button>
+                <button 
+                  v-if="user._id !== currentUser._id"
+                  @click="deleteUser(user)"
+                  :disabled="deletingUser === user._id"
+                  class="action-btn delete-user"
+                  title="ลบผู้ใช้"
+                >
+                  <svg v-if="deletingUser === user._id" class="loading-icon" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.3"/>
+                    <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                  </svg>
+                  <svg v-else viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                  </svg>
+                </button>
+                <span v-else-if="user._id === currentUser._id" class="disabled-action">
+                  ไม่สามารถจัดการตัวเองได้
+                </span>
                 <span v-else class="disabled-action">
                   ไม่สามารถแก้ไขได้
                 </span>
@@ -307,6 +325,7 @@ export default {
       currentPage: 1,
       usersPerPage: 10,
       updatingUser: null,
+      deletingUser: null,
       showUserModal: false,
       selectedUser: null
     }
@@ -414,6 +433,67 @@ export default {
         this.$notify.error('เกิดข้อผิดพลาดในการเปลี่ยนสิทธิ์ผู้ใช้')
       } finally {
         this.updatingUser = null
+      }
+    },
+    
+    async deleteUser(user) {
+      if (this.deletingUser === user._id) return
+      
+      // Prevent deleting current user
+      if (user._id === this.currentUser._id) {
+        this.$notify.error('ไม่สามารถลบบัญชีตัวเองได้')
+        return
+      }
+      
+      const userName = user.firstName || user.lastName 
+        ? `${user.firstName || ''} ${user.lastName || ''}`.trim() 
+        : user.username
+      
+      const confirmMessage = `คุณแน่ใจหรือไม่ที่จะลบผู้ใช้ "${userName}" (@${user.username})?\n\nการดำเนินการนี้ไม่สามารถยกเลิกได้ และจะลบข้อมูลทั้งหมดของผู้ใช้นี้`
+      
+      if (!confirm(confirmMessage)) return
+      
+      // Double confirmation for admin deletion
+      if (user.role === 'admin') {
+        const adminConfirm = confirm(`ผู้ใช้นี้เป็น "ผู้ดูแลระบบ" คุณแน่ใจหรือไม่ที่ต้องการลบ?`)
+        if (!adminConfirm) return
+      }
+      
+      this.deletingUser = user._id
+      
+      try {
+        const response = await api.delete(`/users/${user._id}`)
+        
+        if (response.data.success) {
+          // Remove user from local array
+          this.users = this.users.filter(u => u._id !== user._id)
+          
+          // Close modal if deleted user was being viewed
+          if (this.selectedUser && this.selectedUser._id === user._id) {
+            this.closeUserModal()
+          }
+          
+          // Adjust current page if needed
+          if (this.paginatedUsers.length === 0 && this.currentPage > 1) {
+            this.currentPage--
+          }
+          
+          this.$notify.success(`ลบผู้ใช้ "${userName}" เรียบร้อยแล้ว`)
+        } else {
+          throw new Error(response.data.message || 'ไม่สามารถลบผู้ใช้ได้')
+        }
+      } catch (error) {
+        console.error('Error deleting user:', error)
+        
+        if (error.response?.status === 403) {
+          this.$notify.error('คุณไม่มีสิทธิ์ในการลบผู้ใช้นี้')
+        } else if (error.response?.status === 404) {
+          this.$notify.error('ไม่พบผู้ใช้ที่ต้องการลบ')
+        } else {
+          this.$notify.error('เกิดข้อผิดพลาดในการลบผู้ใช้')
+        }
+      } finally {
+        this.deletingUser = null
       }
     },
     
@@ -686,6 +766,13 @@ export default {
   font-size: 0.875rem;
 }
 
+.user-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+}
+
 .action-btn {
   background: #f3f4f6;
   border: 1px solid #d1d5db;
@@ -722,6 +809,24 @@ export default {
 .toggle-role:hover:not(:disabled) {
   background: #d1fae5;
   border-color: #059669;
+}
+
+.delete-user {
+  color: #dc2626;
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.delete-user:hover:not(:disabled) {
+  background: #fecaca;
+  border-color: #dc2626;
+  transform: scale(1.05);
+}
+
+.delete-user:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .disabled-action {
