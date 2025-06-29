@@ -76,6 +76,18 @@
             </svg>
             <span>จัดการผู้ใช้</span>
           </router-link>
+
+          <router-link 
+            v-if="isAdmin" 
+            to="/coupons" 
+            class="nav-link"
+            @click="closeMobileMenu"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12.79 21L3 11.21v2c0 .45.35.79.79.79h8.21l-.01-.79zM11.21 3H5c-.45 0-.79.35-.79.79v6.21l8.79 8.79L11.21 3z"/>
+            </svg>
+            <span>จัดการคูปอง</span>
+          </router-link>
         </div>
 
         <!-- User Menu -->

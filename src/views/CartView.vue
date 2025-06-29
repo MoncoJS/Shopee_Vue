@@ -64,6 +64,20 @@
           <!-- Items List -->
           <div class="cart-items-section">
             <div class="section-header">
+              <div class="select-all-section">
+                <label class="checkbox-container">
+                  <input 
+                    type="checkbox" 
+                    v-model="selectAll" 
+                    @change="toggleSelectAll"
+                  >
+                  <span class="checkmark"></span>
+                  เลือกทั้งหมด
+                </label>
+                <span class="selected-count" v-if="selectedItemsCount > 0">
+                  (เลือกแล้ว {{ selectedItemsCount }} รายการ)
+                </span>
+              </div>
               <h2>สินค้าในตะกร้า ({{ mergedItems.length }} รายการ)</h2>
               <button 
                 @click="clearCart" 
@@ -86,7 +100,20 @@
                 v-for="item in mergedItems" 
                 :key="getItemId(item)"
                 class="cart-item"
+                :class="{ 'selected': isItemSelected(item) }"
               >
+                <!-- Checkbox -->
+                <div class="item-checkbox">
+                  <label class="checkbox-container">
+                    <input 
+                      type="checkbox" 
+                      :checked="isItemSelected(item)"
+                      @change="toggleItemSelection(item)"
+                    >
+                    <span class="checkmark"></span>
+                  </label>
+                </div>
+
                 <!-- Product Image -->
                 <div class="item-image">
                   <img
@@ -176,7 +203,10 @@
                     placeholder="ใส่โค้ดส่วนลด"
                     class="coupon-input"
                   />
-                  <button @click="applyCoupon" class="apply-coupon-btn">ใช้</button>
+                  <button @click="applyCoupon" :disabled="couponLoading || !couponCode.trim()" class="apply-coupon-btn">
+                    <span v-if="couponLoading">รอสักครู่...</span>
+                    <span v-else>ใช้</span>
+                  </button>
                 </div>
                 <div v-if="appliedCoupon" class="applied-coupon">
                   <div class="coupon-success">
@@ -184,27 +214,40 @@
                       <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
                     </svg>
                     <span>ใช้โค้ด {{ appliedCoupon.code }} แล้ว!</span>
+                    <button @click="removeCoupon" class="remove-coupon-btn">
+                      <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                      </svg>
+                    </button>
                   </div>
                 </div>
               </div>
 
               <!-- Price Breakdown -->
               <div class="price-breakdown">
-                <div class="price-row">
-                  <span>ราคาสินค้า</span>
-                  <span>฿{{ formatPrice(totalPrice) }}</span>
+                <div v-if="!hasSelectedItems" class="no-selection-message">
+                  <p>กรุณาเลือกสินค้าที่ต้องการสั่งซื้อ</p>
                 </div>
-                <div v-if="appliedCoupon" class="price-row discount">
-                  <span>ส่วนลด</span>
-                  <span>-฿{{ formatPrice(discountAmount) }}</span>
-                </div>
-                <div class="price-row shipping">
-                  <span>ค่าจัดส่ง</span>
-                  <span class="free-shipping">ฟรี</span>
+                <div v-else>
+                  <div class="selected-items-summary">
+                    <p>สินค้าที่เลือก: {{ selectedItemsCount }} รายการ</p>
+                  </div>
+                  <div class="price-row">
+                    <span>ราคาสินค้า</span>
+                    <span>฿{{ formatPrice(selectedTotalPrice) }}</span>
+                  </div>
+                  <div v-if="appliedCoupon" class="price-row discount">
+                    <span>ส่วนลด</span>
+                    <span>-฿{{ formatPrice(discountAmount) }}</span>
+                  </div>
+                  <div class="price-row shipping">
+                    <span>ค่าจัดส่ง</span>
+                    <span class="free-shipping">ฟรี</span>
+                  </div>
                 </div>
                 <div class="price-row total">
                   <span>ยอดรวมทั้งสิ้น</span>
-                  <span>฿{{ formatPrice(appliedCoupon ? finalPrice : totalPrice) }}</span>
+                  <span>฿{{ formatPrice(hasSelectedItems ? (appliedCoupon ? finalPrice : selectedTotalPrice) : 0) }}</span>
                 </div>
               </div>
 
@@ -219,7 +262,7 @@
                 
                 <button
                   @click="checkout"
-                  :disabled="checkoutLoading"
+                  :disabled="checkoutLoading || !hasSelectedItems"
                   class="checkout-btn"
                 >
                   <svg v-if="checkoutLoading" class="loading-icon" viewBox="0 0 24 24">
@@ -230,6 +273,7 @@
                     <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
                   </svg>
                   <span v-if="checkoutLoading">กำลังสั่งซื้อ...</span>
+                  <span v-else-if="!hasSelectedItems">เลือกสินค้าก่อน</span>
                   <span v-else>สั่งซื้อตอนนี้</span>
                 </button>
               </div>
@@ -251,7 +295,29 @@ export default {
     return {
       checkoutLoading: false,
       clearingCart: false,
-      removingItems: []
+      removingItems: [],
+      couponCode: '',
+      appliedCoupon: null,
+      couponLoading: false,
+      selectedItems: {}, // Track which items are selected for checkout
+      selectAll: false
+    }
+  },
+  watch: {
+    mergedItems: {
+      handler(newItems) {
+        // Auto-select new items that are added to cart
+        if (newItems && newItems.length > 0) {
+          newItems.forEach(item => {
+            const itemId = this.getItemId(item);
+            if (!Object.prototype.hasOwnProperty.call(this.selectedItems, itemId)) {
+              this.$set(this.selectedItems, itemId, true);
+            }
+          });
+          this.updateSelectAllState();
+        }
+      },
+      immediate: true
     }
   },
   methods: {
@@ -336,6 +402,119 @@ export default {
       if (this.$options.mixins[0].methods.fetchCartItems) {
         await this.$options.mixins[0].methods.fetchCartItems.call(this);
       }
+    },
+    async applyCoupon() {
+      if (!this.couponCode.trim()) {
+        this.$notify.error('กรุณากรอกรหัสคูปอง');
+        return;
+      }
+
+      if (this.couponLoading) return;
+      
+      this.couponLoading = true;
+      try {
+        const api = require('@/services/api').default;
+        const response = await api.get(`/coupons/code/${this.couponCode.trim()}`);
+        
+        if (response.data.success) {
+          const coupon = response.data.data;
+          
+          // Check if coupon is active
+          if (!coupon.isActive) {
+            this.$notify.error('คูปองนี้ไม่สามารถใช้งานได้');
+            return;
+          }
+          
+          // Check if coupon is expired
+          if (new Date(coupon.expirationDate) < new Date()) {
+            this.$notify.error('คูปองนี้หมดอายุแล้ว');
+            return;
+          }
+          
+          this.appliedCoupon = coupon;
+          this.couponCode = '';
+          this.$notify.success(`ใช้คูปอง ${coupon.code} สำเร็จ!`);
+        } else {
+          this.$notify.error('ไม่พบคูปองนี้');
+        }
+      } catch (error) {
+        console.error('Error applying coupon:', error);
+        this.$notify.error('เกิดข้อผิดพลาดในการใช้คูปอง');
+      } finally {
+        this.couponLoading = false;
+      }
+    },
+    removeCoupon() {
+      this.appliedCoupon = null;
+      this.$notify.success('ยกเลิกการใช้คูปองแล้ว');
+    },
+    
+    // Checkbox functionality
+    isItemSelected(item) {
+      const itemId = this.getItemId(item);
+      return !!this.selectedItems[itemId];
+    },
+    
+    toggleItemSelection(item) {
+      const itemId = this.getItemId(item);
+      if (this.selectedItems[itemId]) {
+        this.$delete(this.selectedItems, itemId);
+      } else {
+        this.$set(this.selectedItems, itemId, true);
+      }
+      this.updateSelectAllState();
+    },
+    
+    toggleSelectAll() {
+      if (this.selectAll) {
+        // Select all items
+        this.mergedItems.forEach(item => {
+          const itemId = this.getItemId(item);
+          this.$set(this.selectedItems, itemId, true);
+        });
+      } else {
+        // Deselect all items
+        this.selectedItems = {};
+      }
+    },
+    
+    updateSelectAllState() {
+      const allSelected = this.mergedItems.length > 0 && 
+                         this.mergedItems.every(item => this.isItemSelected(item));
+      this.selectAll = allSelected;
+    },
+    
+    getItemId(item) {
+      return item.product_id || item._id || item.id;
+    }
+  },
+  computed: {
+    // ...existing computed properties...
+    discountAmount() {
+      if (!this.appliedCoupon) return 0;
+      
+      if (this.appliedCoupon.discountType === 'percentage') {
+        return (this.selectedTotalPrice * this.appliedCoupon.discountValue) / 100;
+      } else {
+        return Math.min(this.appliedCoupon.discountValue, this.selectedTotalPrice);
+      }
+    },
+    finalPrice() {
+      return Math.max(0, this.selectedTotalPrice - this.discountAmount);
+    },
+    selectedItemsList() {
+      return this.mergedItems.filter(item => this.isItemSelected(item));
+    },
+    selectedItemsCount() {
+      return this.selectedItemsList.length;
+    },
+    selectedTotalPrice() {
+      return this.selectedItemsList.reduce((total, item) => {
+        return total + (item.price * item.quantity);
+      }, 0);
+    },
+    hasSelectedItems() {
+      return this.selectedItemsCount > 0;
     }
   }
 }
@@ -554,6 +733,83 @@ export default {
   height: 16px;
 }
 
+/* Section Header */
+.section-header {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-bottom: 1px solid #f0f0f0;
+  background: #fafafa;
+}
+
+.select-all-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.selected-count {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+/* Checkbox Styles */
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-container input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.checkbox-container .checkmark {
+  height: 20px;
+  width: 20px;
+  background-color: #fff;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  position: relative;
+  transition: all 0.2s;
+}
+
+.checkbox-container:hover input ~ .checkmark {
+  border-color: #ee4d2d;
+}
+
+.checkbox-container input:checked ~ .checkmark {
+  background-color: #ee4d2d;
+  border-color: #ee4d2d;
+}
+
+.checkbox-container .checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+}
+
+.checkbox-container input:checked ~ .checkmark:after {
+  display: block;
+}
+
+.checkbox-container .checkmark:after {
+  left: 6px;
+  top: 2px;
+  width: 6px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
 .cart-items {
   padding: 0;
 }
@@ -564,15 +820,24 @@ export default {
   gap: 1rem;
   padding: 1.5rem;
   border-bottom: 1px solid #f0f0f0;
-  transition: background 0.2s;
+  transition: all 0.2s;
 }
 
 .cart-item:hover {
   background: #fafafa;
 }
 
+.cart-item.selected {
+  background: #fff5f5;
+  border-left: 4px solid #ee4d2d;
+}
+
 .cart-item:last-child {
   border-bottom: none;
+}
+
+.item-checkbox {
+  flex-shrink: 0;
 }
 
 .item-image {
@@ -785,8 +1050,13 @@ export default {
   white-space: nowrap;
 }
 
-.apply-coupon-btn:hover {
+.apply-coupon-btn:hover:not(:disabled) {
   background: #218838;
+}
+
+.apply-coupon-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
 }
 
 .applied-coupon {
@@ -807,8 +1077,57 @@ export default {
   height: 16px;
 }
 
+.remove-coupon-btn {
+  background: none;
+  border: none;
+  color: #dc3545;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: background 0.2s;
+  margin-left: auto;
+}
+
+.remove-coupon-btn:hover {
+  background: rgba(220, 53, 69, 0.1);
+}
+
+.remove-coupon-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
 .price-breakdown {
   margin-bottom: 1.5rem;
+}
+
+.no-selection-message {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.no-selection-message p {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.selected-items-summary {
+  background: #e8f5e8;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  border-left: 4px solid #28a745;
+}
+
+.selected-items-summary p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #155724;
+  font-weight: 500;
 }
 
 .price-row {
