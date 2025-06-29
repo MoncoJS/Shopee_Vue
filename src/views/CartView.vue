@@ -64,35 +64,55 @@
           <!-- Items List -->
           <div class="cart-items-section">
             <div class="section-header">
-              <div class="select-all-section">
-                <label class="checkbox-container">
-                  <input 
-                    type="checkbox" 
-                    v-model="selectAll" 
-                    @change="toggleSelectAll"
-                  >
-                  <span class="checkmark"></span>
-                  เลือกทั้งหมด
-                </label>
-                <span class="selected-count" v-if="selectedItemsCount > 0">
-                  (เลือกแล้ว {{ selectedItemsCount }} รายการ)
-                </span>
+              <div class="header-left">
+                <h2>สินค้าในตะกร้า ({{ mergedItems.length }} รายการ)</h2>
+                <div class="select-all-section">
+                  <label class="checkbox-container">
+                    <input 
+                      type="checkbox" 
+                      v-model="selectAll" 
+                      @change="toggleSelectAll"
+                    >
+                    <span class="checkmark"></span>
+                    เลือกทั้งหมด
+                  </label>
+                  <span class="selected-count" v-if="selectedItemsCount > 0">
+                    (เลือกแล้ว {{ selectedItemsCount }} รายการ)
+                  </span>
+                </div>
               </div>
-              <h2>สินค้าในตะกร้า ({{ mergedItems.length }} รายการ)</h2>
-              <button 
-                @click="clearCart" 
-                :disabled="clearingCart"
-                class="clear-all-btn"
-              >
-                <svg v-if="clearingCart" class="loading-icon" viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.3"/>
-                  <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-                </svg>
+              <div class="header-actions">
+                <button 
+                  v-if="selectedItemsCount > 0"
+                  @click="removeSelectedItems" 
+                  :disabled="removingItems.length > 0"
+                  class="remove-selected-btn"
+                  title="ลบสินค้าที่เลือก"
+                >
+                  <svg v-if="removingItems.length > 0" class="loading-icon" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.3"/>
+                    <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                  </svg>
+                  <svg v-else viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                  </svg>
+                  <span>ลบที่เลือก</span>
+                </button>
+                <button 
+                  @click="clearCart" 
+                  :disabled="clearingCart"
+                  class="clear-all-btn"
+                >
+                  <svg v-if="clearingCart" class="loading-icon" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.3"/>
+                    <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                  </svg>
                 <svg v-else viewBox="0 0 24 24" fill="currentColor">
                   <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
                 </svg>
                 <span>ล้างทั้งหมด</span>
-              </button>
+                </button>
+              </div>
             </div>
 
             <div class="cart-items">
@@ -102,97 +122,112 @@
                 class="cart-item"
                 :class="{ 'selected': isItemSelected(item) }"
               >
-                <!-- Checkbox -->
-                <div class="item-checkbox">
-                  <label class="checkbox-container">
-                    <input 
-                      type="checkbox" 
-                      :checked="isItemSelected(item)"
-                      @change="toggleItemSelection(item)"
-                    >
-                    <span class="checkmark"></span>
-                  </label>
-                </div>
+                <!-- Selection and Image Section -->
+                <div class="item-left-section">
+                  <!-- Checkbox -->
+                  <div class="item-checkbox">
+                    <label class="checkbox-container">
+                      <input 
+                        type="checkbox" 
+                        :checked="isItemSelected(item)"
+                        @change="toggleItemSelection(item)"
+                      >
+                      <span class="checkmark"></span>
+                    </label>
+                  </div>
 
-                <!-- Product Image -->
-                <div class="item-image">
-                  <img
-                    v-if="getProductInfo(item).img"
-                    :src="getProductImg(getProductInfo(item).img)"
-                    :alt="getProductInfo(item).name || 'ไม่มีชื่อสินค้า'"
-                    class="product-img"
-                    @error="onImgError($event)"
-                    @load="onImgLoad($event)"
-                    loading="lazy"
-                  />
-                  <div v-else class="img-placeholder">
-                    <svg viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
-                    </svg>
+                  <!-- Product Image -->
+                  <div class="item-image">
+                    <div class="image-wrapper">
+                      <img
+                        v-if="getProductInfo(item).img"
+                        :src="getProductImg(getProductInfo(item).img)"
+                        :alt="getProductInfo(item).name || 'ไม่มีชื่อสินค้า'"
+                        class="product-img"
+                        @error="onImgError($event)"
+                        @load="onImgLoad($event)"
+                        loading="lazy"
+                      />
+                      <div v-else class="img-placeholder">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                        </svg>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
                 <!-- Product Details -->
                 <div class="item-details">
-                  <h3 class="item-name">
-                    {{ getProductInfo(item).name }}
-                  </h3>
-                  <p class="item-price">฿{{ formatPrice(item.price) }} / ชิ้น</p>
+                  <div class="item-info">
+                    <h3 class="item-name">
+                      {{ getProductInfo(item).name }}
+                    </h3>
+                    <div class="item-price-section">
+                      <span class="unit-price">฿{{ formatPrice(item.price) }}</span>
+                      <span class="price-label">/ ชิ้น</span>
+                    </div>
+                  </div>
                   
-                  <!-- Quantity Controls -->
-                  <div class="quantity-section">
-                    <div class="quantity-controls">
-                      <button 
-                        @click="decreaseQty(item)" 
-                        class="qty-btn"
-                        :disabled="item.quantity <= 1 || updatingItems.includes(getItemId(item))"
-                      >
-                        <svg v-if="updatingItems.includes(getItemId(item))" class="loading-icon" viewBox="0 0 24 24">
-                          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.3"/>
-                          <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-                        </svg>
-                        <svg v-else viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M19 13H5v-2h14v2z"/>
-                        </svg>
-                      </button>
-                      <span class="qty-display">{{ item.quantity }}</span>
-                      <button 
-                        @click="increaseQty(item)" 
-                        class="qty-btn"
-                        :disabled="updatingItems.includes(getItemId(item))"
-                      >
-                        <svg v-if="updatingItems.includes(getItemId(item))" class="loading-icon" viewBox="0 0 24 24">
-                          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.3"/>
-                          <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-                        </svg>
-                        <svg v-else viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-                        </svg>
-                      </button>
+                  <!-- Quantity and Total Section -->
+                  <div class="item-controls">
+                    <div class="quantity-wrapper">
+                      <span class="quantity-label">จำนวน:</span>
+                      <div class="quantity-controls">
+                        <button 
+                          @click="decreaseQty(item)" 
+                          class="qty-btn decrease"
+                          :disabled="item.quantity <= 1 || updatingItems.includes(getItemId(item))"
+                        >
+                          <svg v-if="updatingItems.includes(getItemId(item))" class="loading-icon" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.3"/>
+                            <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                          </svg>
+                          <svg v-else viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 13H5v-2h14v2z"/>
+                          </svg>
+                        </button>
+                        <div class="qty-display">{{ item.quantity }}</div>
+                        <button 
+                          @click="increaseQty(item)" 
+                          class="qty-btn increase"
+                          :disabled="updatingItems.includes(getItemId(item))"
+                        >
+                          <svg v-if="updatingItems.includes(getItemId(item))" class="loading-icon" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.3"/>
+                            <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                          </svg>
+                          <svg v-else viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                     
                     <div class="item-total">
-                      <span class="total-label">รวม:</span>
+                      <span class="total-label">รวม</span>
                       <span class="total-price">฿{{ formatPrice(item.price * item.quantity) }}</span>
                     </div>
                   </div>
                 </div>
 
                 <!-- Remove Button -->
-                <button 
-                  @click="removeItem(item)" 
-                  :disabled="removingItems.includes(getItemId(item))"
-                  class="remove-btn"
-                  title="ลบสินค้า"
-                >
-                  <svg v-if="removingItems.includes(getItemId(item))" class="loading-icon" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.3"/>
-                    <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-                  </svg>
-                  <svg v-else viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
-                  </svg>
-                </button>
+                <div class="item-actions">
+                  <button 
+                    @click="removeItem(item)" 
+                    :disabled="removingItems.includes(getItemId(item))"
+                    class="remove-btn"
+                    title="ลบสินค้า"
+                  >
+                    <svg v-if="removingItems.includes(getItemId(item))" class="loading-icon" viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.3"/>
+                      <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                    </svg>
+                    <svg v-else viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -418,29 +453,45 @@ export default {
         this.$notify.warning('กรุณาเลือกสินค้าที่ต้องการลบ');
         return;
       }
-
-      const confirmMessage = `คุณต้องการลบสินค้าที่เลือก ${selectedItems.length} รายการหรือไม่?`;
-      if (!confirm(confirmMessage)) return;
-
-      this.clearingCart = true;
+      
+      // Show confirmation dialog
+      const confirmed = confirm(`คุณต้องการลบสินค้าที่เลือก ${selectedItems.length} รายการหรือไม่?`);
+      if (!confirmed) return;
+      
+      this.removingItems = [...this.removingItems];
+      
       try {
         // Remove each selected item
         for (const item of selectedItems) {
-          await this.$options.mixins[0].methods.removeItem.call(this, item);
+          const itemId = this.getItemId(item);
+          if (!this.removingItems.includes(itemId)) {
+            this.removingItems.push(itemId);
+          }
+          
+          try {
+            await this.$options.mixins[0].methods.removeItem.call(this, item);
+            // Remove from selected items
+            this.$delete(this.selectedItems, itemId);
+          } catch (error) {
+            console.error(`Error removing item ${itemId}:`, error);
+          }
         }
-
-        // Clear selected items
-        this.selectedItems = {};
-        this.selectAll = false;
-
-        this.$notify.success(`ลบสินค้า ${selectedItems.length} รายการแล้ว`);
+        
+        this.updateSelectAllState();
+        this.$notify.success(`ลบสินค้าที่เลือก ${selectedItems.length} รายการแล้ว`);
+        
       } catch (error) {
         console.error('Error removing selected items:', error);
-        this.$notify.error('เกิดข้อผิดพลาดในการลบสินค้า');
+        this.$notify.error('เกิดข้อผิดพลาดในการลบสินค้าบางรายการ');
       } finally {
-        this.clearingCart = false;
+        this.removingItems = [];
       }
     },
+    
+    getSelectedItems() {
+      return this.mergedItems.filter(item => this.isItemSelected(item));
+    },
+    
     async checkout() {
       if (this.checkoutLoading) return;
       this.checkoutLoading = true;
@@ -860,16 +911,64 @@ export default {
 .section-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   padding: 1.5rem;
   border-bottom: 1px solid #eee;
+  background: #fafafa;
 }
 
-.section-header h2 {
+.header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.header-left h2 {
   font-size: 1.25rem;
   font-weight: 600;
   color: #333;
   margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.select-all-section {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.selected-count {
+  font-size: 0.875rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.remove-selected-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #f39c12;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.2s;
+}
+
+.remove-selected-btn:hover:not(:disabled) {
+  background: #e67e22;
+}
+
+.remove-selected-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .clear-all-btn {
@@ -895,122 +994,101 @@ export default {
   cursor: not-allowed;
 }
 
-.clear-all-btn svg {
+.clear-all-btn svg, .remove-selected-btn svg {
   width: 16px;
   height: 16px;
 }
 
-/* Section Header */
-.section-header {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 1.5rem;
-  border-bottom: 1px solid #f0f0f0;
-  background: #fafafa;
-}
-
-.select-all-section {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.selected-count {
-  color: #666;
-  font-size: 0.9rem;
-}
-
-/* Checkbox Styles */
-.checkbox-container {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  user-select: none;
-}
-
-.checkbox-container input[type="checkbox"] {
-  position: absolute;
-  opacity: 0;
-  cursor: pointer;
-  height: 0;
-  width: 0;
-}
-
-.checkbox-container .checkmark {
-  height: 20px;
-  width: 20px;
-  background-color: #fff;
-  border: 2px solid #ddd;
-  border-radius: 4px;
-  position: relative;
-  transition: all 0.2s;
-}
-
-.checkbox-container:hover input ~ .checkmark {
-  border-color: #ee4d2d;
-}
-
-.checkbox-container input:checked ~ .checkmark {
-  background-color: #ee4d2d;
-  border-color: #ee4d2d;
-}
-
-.checkbox-container .checkmark:after {
-  content: "";
-  position: absolute;
-  display: none;
-}
-
-.checkbox-container input:checked ~ .checkmark:after {
-  display: block;
-}
-
-.checkbox-container .checkmark:after {
-  left: 6px;
-  top: 2px;
-  width: 6px;
-  height: 10px;
-  border: solid white;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-}
-
+/* Cart Items */
 .cart-items {
   padding: 0;
+  background: #fafbfc;
+  border-radius: 12px;
 }
 
 .cart-item {
   display: flex;
-  align-items: center;
-  gap: 1rem;
+  align-items: stretch;
+  gap: 1.5rem;
   padding: 1.5rem;
-  border-bottom: 1px solid #f0f0f0;
-  transition: all 0.2s;
+  margin: 0.75rem;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  border: 2px solid transparent;
+  overflow: hidden;
+}
+
+.cart-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(238, 77, 45, 0.02) 0%, rgba(255, 107, 53, 0.02) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
 }
 
 .cart-item:hover {
-  background: #fafafa;
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  border-color: rgba(238, 77, 45, 0.1);
+}
+
+.cart-item:hover::before {
+  opacity: 1;
 }
 
 .cart-item.selected {
-  background: #fff5f5;
-  border-left: 4px solid #ee4d2d;
+  background: linear-gradient(135deg, #fff8f5, #fef5f3);
+  border-color: #ee4d2d;
+  box-shadow: 0 8px 32px rgba(238, 77, 45, 0.15);
+  transform: translateY(-2px);
+}
+
+.cart-item.selected::before {
+  background: linear-gradient(135deg, rgba(238, 77, 45, 0.05) 0%, rgba(255, 107, 53, 0.05) 100%);
+  opacity: 1;
 }
 
 .cart-item:last-child {
-  border-bottom: none;
+  margin-bottom: 0.75rem;
+}
+
+/* Left Section - Checkbox and Image */
+.item-left-section {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-shrink: 0;
 }
 
 .item-checkbox {
   flex-shrink: 0;
+  z-index: 2;
+  position: relative;
 }
 
 .item-image {
   flex-shrink: 0;
-  width: 80px;
-  height: 80px;
+  width: 120px;
+  height: 120px;
+  position: relative;
+  z-index: 2;
+}
+
+.image-wrapper {
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
   position: relative;
 }
 
@@ -1018,140 +1096,250 @@ export default {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 8px;
-  background: #f8f9fa;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  filter: brightness(1.02) contrast(1.02);
+}
+
+.cart-item:hover .product-img {
+  transform: scale(1.05);
+  filter: brightness(1.05) contrast(1.05);
 }
 
 .img-placeholder {
   width: 100%;
   height: 100%;
-  background: #f0f0f0;
-  border-radius: 8px;
+  background: linear-gradient(135deg, #f0f0f0, #e0e0e0);
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #999;
+  position: relative;
+}
+
+.img-placeholder::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="%23f5f5f5" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+  opacity: 0.3;
+  border-radius: 12px;
 }
 
 .img-placeholder svg {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
+  z-index: 1;
+  position: relative;
 }
 
+/* Product Details */
 .item-details {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   min-width: 0;
+  z-index: 2;
+  position: relative;
+}
+
+.item-info {
+  margin-bottom: 1rem;
 }
 
 .item-name {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 0.5rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0 0 0.75rem 0;
   line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  transition: color 0.3s ease;
 }
 
-.item-price {
+.cart-item:hover .item-name {
+  color: #ee4d2d;
+}
+
+.item-price-section {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.unit-price {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #ee4d2d;
+  background: linear-gradient(135deg, #ee4d2d, #ff6b35);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.price-label {
+  font-size: 0.9rem;
   color: #666;
-  margin-bottom: 0.75rem;
+  font-weight: 500;
 }
 
-.quantity-section {
+/* Controls Section */
+.item-controls {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 1rem;
+}
+
+.quantity-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.quantity-label {
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .quantity-controls {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 0.25rem;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .qty-btn {
-  width: 32px;
-  height: 32px;
-  border: 1px solid #ddd;
+  width: 36px;
+  height: 36px;
+  border: none;
   background: white;
-  border-radius: 6px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.qty-btn:hover:not(:disabled) {
-  border-color: #ee4d2d;
-  color: #ee4d2d;
+.qty-btn.decrease:hover:not(:disabled) {
+  background: linear-gradient(135deg, #dc3545, #c82333);
+  color: white;
+  transform: scale(1.1);
+}
+
+.qty-btn.increase:hover:not(:disabled) {
+  background: linear-gradient(135deg, #28a745, #218838);
+  color: white;
+  transform: scale(1.1);
 }
 
 .qty-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  transform: none;
 }
 
 .qty-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
 }
 
 .qty-display {
-  min-width: 40px;
+  min-width: 44px;
   text-align: center;
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #333;
+  background: white;
+  border-radius: 8px;
   padding: 0.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .item-total {
   text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
 }
 
 .total-label {
-  display: block;
   font-size: 0.85rem;
   color: #666;
-  margin-bottom: 0.25rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .total-price {
-  font-size: 1.1rem;
-  font-weight: 700;
+  font-size: 1.3rem;
+  font-weight: 800;
   color: #ee4d2d;
+  background: linear-gradient(135deg, #ee4d2d, #ff6b35);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Actions Section */
+.item-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  z-index: 2;
+  position: relative;
 }
 
 .remove-btn {
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  background: #dc3545;
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, #dc3545, #c82333);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 12px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 4px 16px rgba(220, 53, 69, 0.3);
 }
 
 .remove-btn:hover:not(:disabled) {
-  background: #c82333;
+  background: linear-gradient(135deg, #c82333, #b21e2f);
+  transform: scale(1.1) rotate(5deg);
+  box-shadow: 0 6px 24px rgba(220, 53, 69, 0.4);
 }
 
 .remove-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  transform: none;
 }
 
 .remove-btn svg {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
+}
+
+.loading-icon {
+  animation: spin 1s linear infinite;
 }
 
 .order-summary-section {
@@ -1397,6 +1585,71 @@ export default {
   animation: spin 1s linear infinite;
 }
 
+/* Checkbox Styles */
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-container input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.checkbox-container .checkmark {
+  height: 24px;
+  width: 24px;
+  background: white;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.checkbox-container:hover input ~ .checkmark {
+  border-color: #ee4d2d;
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(238, 77, 45, 0.2);
+}
+
+.checkbox-container input:checked ~ .checkmark {
+  background: linear-gradient(135deg, #ee4d2d, #ff6b35);
+  border-color: #ee4d2d;
+  transform: scale(1.05);
+}
+
+.checkbox-container .checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+}
+
+.checkbox-container input:checked ~ .checkmark:after {
+  display: block;
+}
+
+.checkbox-container .checkmark:after {
+  left: 7px;
+  top: 3px;
+  width: 6px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.selected-count {
+  color: #666;
+  font-size: 0.9rem;
+}
+
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
   .cart-layout {
@@ -1411,23 +1664,45 @@ export default {
 
   .cart-item {
     flex-direction: column;
+    align-items: stretch;
+    gap: 1.25rem;
+    padding: 1.25rem;
+    margin: 0.5rem;
+  }
+
+  .item-left-section {
     align-items: flex-start;
     gap: 1rem;
-    padding: 1rem;
   }
 
   .item-image {
-    width: 100%;
-    height: 200px;
+    width: 100px;
+    height: 100px;
   }
 
-  .quantity-section {
-    width: 100%;
-    flex-direction: column;
+  .image-wrapper {
+    border-radius: 12px;
+  }
+
+  .item-details {
     gap: 1rem;
   }
 
-  .quantity-controls {
+  .item-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .quantity-wrapper {
+    justify-content: center;
+  }
+
+  .item-total {
+    text-align: center;
+  }
+
+  .item-actions {
     justify-content: center;
   }
 
@@ -1450,7 +1725,45 @@ export default {
   }
 
   .cart-item {
+    padding: 1rem;
+    margin: 0.25rem;
+    border-radius: 12px;
+  }
+
+  .item-left-section {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .item-image {
+    width: 120px;
+    height: 120px;
+  }
+
+  .item-name {
+    font-size: 1rem;
+    text-align: center;
+  }
+
+  .item-price-section {
+    justify-content: center;
+  }
+
+  .quantity-controls {
+    background: #f1f3f4;
+    padding: 0.5rem;
+    border-radius: 16px;
+  }
+
+  .qty-btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .qty-display {
     padding: 0.75rem;
+    font-size: 1.2rem;
   }
 
   .section-header {
@@ -1459,9 +1772,30 @@ export default {
     gap: 1rem;
     align-items: stretch;
   }
+  
+  .header-left {
+    gap: 0.75rem;
+  }
 
-  .section-header h2 {
+  .header-left h2 {
     text-align: center;
+    font-size: 1.1rem;
+  }
+  
+  .header-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .select-all-section {
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  
+  .remove-selected-btn,
+  .clear-all-btn {
+    width: 100%;
+    justify-content: center;
   }
 }
 </style>
