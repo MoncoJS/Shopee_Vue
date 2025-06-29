@@ -209,6 +209,7 @@ export default {
         description: '',
         price: null,
         stock: null,
+        category: '',
         image: null
       },
       errors: {}

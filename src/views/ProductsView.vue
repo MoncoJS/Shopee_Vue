@@ -34,9 +34,23 @@
           <div class="results-info">
             <span class="results-count">{{ (filteredProducts || []).length }} สินค้า</span>
             <span v-if="search" class="search-term">จากการค้นหา "{{ search }}"</span>
+            <span v-if="selectedCategory" class="category-term">หมวดหมู่ "{{ getCategoryName(selectedCategory) }}"</span>
           </div>
 
           <div class="filter-actions">
+            <select v-model="selectedCategory" class="category-select">
+              <option value="">ทุกหมวดหมู่ ({{ products.length }})</option>
+              <option value="electronics">อิเล็กทรอนิกส์ ({{ categoryCount.electronics || 0 }})</option>
+              <option value="clothing">เสื้อผ้า ({{ categoryCount.clothing || 0 }})</option>
+              <option value="books">หนังสือ ({{ categoryCount.books || 0 }})</option>
+              <option value="sports">กีฬา ({{ categoryCount.sports || 0 }})</option>
+              <option value="home">บ้านและสวน ({{ categoryCount.home || 0 }})</option>
+              <option value="beauty">ความงาม ({{ categoryCount.beauty || 0 }})</option>
+              <option value="food">อาหารและเครื่องดื่ม ({{ categoryCount.food || 0 }})</option>
+              <option value="toys">ของเล่น ({{ categoryCount.toys || 0 }})</option>
+              <option value="automotive">ยานยนต์ ({{ categoryCount.automotive || 0 }})</option>
+              <option value="other">อื่นๆ ({{ categoryCount.other || 0 }})</option>
+            </select>
             <select v-model="sortBy" class="sort-select">
               <option value="default">เรียงตาม</option>
               <option value="price-low">ราคา: ต่ำ → สูง</option>
@@ -65,9 +79,21 @@
         <div v-else-if="(filteredProducts || []).length === 0" class="empty-state">
           <div class="empty-icon">🔍</div>
           <h3>ไม่พบสินค้า</h3>
-          <p v-if="search">ไม่พบสินค้าที่ตรงกับ "{{ search }}"</p>
+          <p v-if="search && selectedCategory">
+            ไม่พบสินค้าที่ตรงกับ "{{ search }}" ในหมวดหมู่ "{{ getCategoryName(selectedCategory) }}"
+          </p>
+          <p v-else-if="search">
+            ไม่พบสินค้าที่ตรงกับ "{{ search }}"
+          </p>
+          <p v-else-if="selectedCategory">
+            ไม่มีสินค้าในหมวดหมู่ "{{ getCategoryName(selectedCategory) }}"
+          </p>
           <p v-else>ยังไม่มีสินค้าในระบบ</p>
-          <button v-if="search" @click="clearSearch" class="clear-search-btn">ล้างการค้นหา</button>
+          <div class="empty-actions">
+            <button v-if="search || selectedCategory" @click="clearAllFilters" class="clear-search-btn">
+              ล้างตัวกรอง
+            </button>
+          </div>
         </div>
 
         <!-- Products Grid -->
@@ -358,6 +384,7 @@ export default {
   data() {
     return {
       search: '',
+      selectedCategory: '',
       sortBy: 'default',
       isAddingToCart: null,
       isDeletingProduct: null,
@@ -375,12 +402,27 @@ export default {
     ...mapGetters(['isAdmin']),
     filteredProducts() {
       if (!this.products || !Array.isArray(this.products)) return []
-      if (!this.search) return this.products
-      const s = this.search.trim().toLowerCase()
-      return this.products.filter(p =>
-        (p.product_name || '').toLowerCase().includes(s) ||
-        (p.description || '').toLowerCase().includes(s)
-      )
+      
+      let filtered = [...this.products]
+      
+      // Filter by search term
+      if (this.search) {
+        const s = this.search.trim().toLowerCase()
+        filtered = filtered.filter(p =>
+          (p.product_name || '').toLowerCase().includes(s) ||
+          (p.description || '').toLowerCase().includes(s) ||
+          this.getCategoryName(p.category || '').toLowerCase().includes(s)
+        )
+      }
+      
+      // Filter by category
+      if (this.selectedCategory) {
+        filtered = filtered.filter(p => 
+          (p.category || '').toLowerCase() === this.selectedCategory.toLowerCase()
+        )
+      }
+      
+      return filtered
     },
     sortedProducts() {
       const products = [...this.filteredProducts]
@@ -397,7 +439,17 @@ export default {
         default:
           return products
       }
-    }
+    },
+    categoryCount() {
+      if (!this.products || !Array.isArray(this.products)) return {}
+      
+      const count = {}
+      this.products.forEach(product => {
+        const category = product.category || 'other'
+        count[category] = (count[category] || 0) + 1
+      })
+      return count
+    },
   },
   async created() {
     // Fetch products when component is created (including when navigating back)
@@ -436,6 +488,10 @@ export default {
     },
     clearSearch() {
       this.search = ''
+    },
+    clearAllFilters() {
+      this.search = ''
+      this.selectedCategory = ''
     },
     getProductImg(img) {
       if (!img) return '';
@@ -736,12 +792,18 @@ export default {
   font-style: italic;
 }
 
+.category-term {
+  color: #666;
+  font-style: italic;
+}
+
 .filter-actions {
   display: flex;
   gap: 1rem;
   align-items: center;
 }
 
+.category-select,
 .sort-select {
   padding: 0.5rem 1rem;
   border: 1px solid #ddd;
@@ -750,11 +812,25 @@ export default {
   color: #333;
   cursor: pointer;
   transition: border-color 0.2s;
+  min-width: 150px;
 }
 
+.category-select:focus,
 .sort-select:focus {
   outline: none;
   border-color: #ee4d2d;
+}
+
+.category-select {
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+}
+
+.empty-actions {
+  margin-top: 1rem;
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
 .loading-state,
@@ -1713,10 +1789,18 @@ export default {
   .filter-section {
     flex-direction: column;
     align-items: stretch;
+    gap: 1rem;
   }
 
   .filter-actions {
     justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .category-select,
+  .sort-select {
+    min-width: 120px;
+    flex: 1;
   }
 
   /* Modal responsive */
