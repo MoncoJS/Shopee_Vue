@@ -60,6 +60,9 @@
             </div>
             <div class="items-list">
               <div v-for="item in bill.items.slice(0, 2)" :key="item._id" class="item-row">
+                <div class="item-image">
+                  <img :src="getProductImageUrl(item)" :alt="item.productName" @error="handleImageError">
+                </div>
                 <div class="item-info">
                   <span class="item-name">{{ item.productName }}</span>
                   <span class="item-qty">x{{ item.quantity }}</span>
@@ -138,7 +141,10 @@
                 <span>รวม</span>
               </div>
               <div v-for="item in selectedBill.items" :key="item._id" class="table-row">
-                <span class="product-name">{{ item.productName }}</span>
+                <div class="product-cell">
+                  <img :src="getProductImageUrl(item)" :alt="item.productName" @error="handleImageError" class="product-image-small">
+                  <span class="product-name">{{ item.productName }}</span>
+                </div>
                 <span class="quantity">{{ item.quantity }}</span>
                 <span class="unit-price">฿{{ item.price.toLocaleString() }}</span>
                 <span class="total-price">฿{{ (item.price * item.quantity).toLocaleString() }}</span>
@@ -216,6 +222,18 @@ export default {
     },
     closeBillDetail() {
       this.selectedBill = null
+    },
+    getProductImageUrl(item) {
+      // If item has image, use it
+      if (item.img) {
+        return `http://localhost:3000/uploads/${item.img}`
+      }
+      // If no image, return placeholder
+      return '/img/placeholder-product.svg'
+    },
+    handleImageError(event) {
+      // Set SVG placeholder image on error
+      event.target.src = '/img/placeholder-product.svg'
     }
   }
 }
@@ -492,21 +510,44 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
+  padding: 16px;
   background: #f8f9fa;
-  border-radius: 10px;
-  margin-bottom: 8px;
-  transition: background-color 0.2s;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  transition: all 0.2s ease;
+  gap: 16px;
 }
 
 .item-row:hover {
   background: #e9ecef;
+  transform: translateX(4px);
+}
+
+.item-image {
+  flex-shrink: 0;
+  width: 60px;
+  height: 60px;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.item-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.2s ease;
+}
+
+.item-image:hover img {
+  transform: scale(1.05);
 }
 
 .item-info {
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-width: 0;
 }
 
 .item-name {
@@ -732,8 +773,8 @@ export default {
   background: #f8f9fa;
   display: grid;
   grid-template-columns: 2fr 1fr 1fr 1fr;
-  gap: 12px;
-  padding: 12px;
+  gap: 16px;
+  padding: 16px;
   font-weight: 600;
   color: #2c3e50;
   border-bottom: 1px solid #e9ecef;
@@ -742,13 +783,37 @@ export default {
 .table-row {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr 1fr;
-  gap: 12px;
-  padding: 12px;
+  gap: 16px;
+  padding: 16px;
   border-bottom: 1px solid #f1f2f6;
+  align-items: center;
 }
 
 .table-row:last-child {
   border-bottom: none;
+}
+
+.table-row:hover {
+  background: #f8f9fa;
+}
+
+.product-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.product-image-small {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: cover;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.product-name {
+  font-weight: 500;
+  color: #2c3e50;
 }
 
 .bill-totals-detail {
