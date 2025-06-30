@@ -326,14 +326,39 @@
         </div>
       </div>
     </div>
+    
+    <!-- Stock Issue Modal -->
+    <StockIssueModal 
+      :isVisible="showStockIssue" 
+      :outOfStockItems="stockIssue.outOfStockItems" 
+      :lowStockItems="stockIssue.lowStockItems"
+      @close="closeStockIssue"
+      @remove-item="handleRemoveStockItem"
+      @adjust-quantity="handleAdjustQuantity"
+      @auto-fix="handleAutoFix"
+    />
+    
+    <!-- Bill Modal -->
+    <BillModal 
+      :isVisible="showBill" 
+      :billData="billData" 
+      @close="closeBill"
+    />
   </div>
 </template>
 
 <script>
 import CartViewModel from '../viewmodels/CartViewModel.js'
+import BillModal from '../components/BillModal.vue'
+import StockIssueModal from '../components/StockIssueModal.vue'
+import api from '../services/api.js'
 
 export default {
   name: 'CartView',
+  components: {
+    BillModal,
+    StockIssueModal
+  },
   mixins: [CartViewModel],
   data() {
     return {
@@ -345,7 +370,14 @@ export default {
       appliedCoupon: null,
       couponLoading: false,
       selectedItems: {}, // Track which items are selected for checkout
-      selectAll: false
+      selectAll: false,
+      showBill: false,
+      billData: {},
+      showStockIssue: false,
+      stockIssue: {
+        outOfStockItems: [],
+        lowStockItems: []
+      }
     }
   },
   watch: {
@@ -494,16 +526,85 @@ export default {
     
     async checkout() {
       if (this.checkoutLoading) return;
+      
+      // Check if there are items in cart
+      if (!this.mergedItems || this.mergedItems.length === 0) {
+        this.$notify.error('ไม่มีสินค้าในตะกร้า');
+        return;
+      }
+      
+      // Check if user is logged in
+      if (!this.isLoggedIn) {
+        this.$notify.error('กรุณาเข้าสู่ระบบก่อนสั่งซื้อ');
+        this.$router.push('/login');
+        return;
+      }
+      
+      // Check for items with null products
+      const validItems = this.mergedItems.filter(item => item.product !== null);
+      if (validItems.length < this.mergedItems.length) {
+        this.$notify.warning(`พบสินค้าที่ไม่ถูกต้อง ${this.mergedItems.length - validItems.length} รายการ จะข้ามรายการเหล่านี้`);
+      }
+      
+      if (validItems.length === 0) {
+        this.$notify.error('ไม่มีสินค้าที่ถูกต้องสำหรับการสั่งซื้อ');
+        return;
+      }
+      
       this.checkoutLoading = true;
       try {
-        await this.$options.mixins[0].methods.checkout.call(this);
+        const result = await this.$options.mixins[0].methods.checkout.call(this);
         this.$notify.success('สั่งซื้อสำเร็จ!');
-        // Reload to refresh the cart
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
+        
+        // Show bill modal
+        if (result && result.billData) {
+          this.billData = result.billData;
+          this.showBill = true;
+        }
+        
+        // Don't reload immediately if showing bill
+        if (!this.showBill) {
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        }
       } catch (error) {
-        this.$notify.error('เกิดข้อผิดพลาดในการสั่งซื้อ');
+        console.error('Checkout error:', error);
+        let errorMessage = error.message || 'เกิดข้อผิดพลาดในการสั่งซื้อ';
+        
+        // Check if this is a stock issue error
+        if (errorMessage.includes('พบปัญหาเกี่ยวกับสินค้า') || 
+            errorMessage.includes('สินค้าที่หมดแล้ว') || 
+            errorMessage.includes('สินค้าที่เหลือไม่เพียงพอ')) {
+          
+          // Try to get stock information and show modal
+          try {
+            const { outOfStockItems, lowStockItems } = await this.$options.mixins[0].methods.checkStockAvailability.call(this);
+            this.stockIssue = { outOfStockItems, lowStockItems };
+            this.showStockIssue = true;
+            return; // Don't show notification, modal will handle it
+          } catch (stockError) {
+            console.error('Error checking stock:', stockError);
+          }
+        }
+        
+        // Show better formatted error messages
+        if (errorMessage.includes('\n')) {
+          // Multi-line error message
+          const lines = errorMessage.split('\n');
+          this.$notify.error(lines[0]);
+          
+          // Show additional details
+          setTimeout(() => {
+            lines.slice(1).forEach(line => {
+              if (line.trim()) {
+                this.$notify.warning(line.trim());
+              }
+            });
+          }, 500);
+        } else {
+          this.$notify.error(errorMessage);
+        }
       } finally {
         this.checkoutLoading = false;
       }
@@ -703,6 +804,129 @@ export default {
       } catch (error) {
         console.error('Error updating item quantity:', error);
         throw error;
+      }
+    },
+    closeBill() {
+      this.showBill = false;
+      this.billData = {};
+      // Reload after closing bill to refresh the cart
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+    },
+
+    // Stock Issue Modal handlers
+    closeStockIssue() {
+      this.showStockIssue = false;
+      this.stockIssue = {
+        outOfStockItems: [],
+        lowStockItems: []
+      };
+    },
+    
+    async handleRemoveStockItem(item) {
+      try {
+        await this.$options.mixins[0].methods.removeItem.call(this, item);
+        this.$notify.success(`ลบ ${item.productName} ออกจากตะกร้าแล้ว`);
+        
+        // Update stock issue data
+        const { outOfStockItems, lowStockItems } = await this.$options.mixins[0].methods.checkStockAvailability.call(this);
+        this.stockIssue = { outOfStockItems, lowStockItems };
+        
+        // Close modal if no more issues
+        if (outOfStockItems.length === 0 && lowStockItems.length === 0) {
+          this.closeStockIssue();
+        }
+      } catch (error) {
+        console.error('Error removing item:', error);
+        this.$notify.error('ไม่สามารถลบสินค้าได้');
+      }
+    },
+    
+    async handleAdjustQuantity({ item, newQuantity }) {
+      try {
+        // Find the item in orders and update quantity
+        const updatedOrders = this.orders.map(order => {
+          if ((order.product?._id || order.product) === (item.product?._id || item.product)) {
+            return { ...order, quantity: newQuantity };
+          }
+          return order;
+        });
+        
+        // Update the entire cart
+        await api.put('/orders/', {
+          items: updatedOrders
+            .filter(order => order && order.product && order.quantity > 0)
+            .map(order => ({
+              product: order.product._id || order.product,
+              quantity: order.quantity,
+              price: order.price
+            }))
+        });
+        
+        await this.$options.mixins[0].methods.fetchCartItems.call(this);
+        this.$notify.success(`ปรับจำนวน ${item.productName} เป็น ${newQuantity} ชิ้นแล้ว`);
+        
+        // Update stock issue data
+        const { outOfStockItems, lowStockItems } = await this.$options.mixins[0].methods.checkStockAvailability.call(this);
+        this.stockIssue = { outOfStockItems, lowStockItems };
+        
+        // Close modal if no more issues
+        if (outOfStockItems.length === 0 && lowStockItems.length === 0) {
+          this.closeStockIssue();
+        }
+      } catch (error) {
+        console.error('Error adjusting quantity:', error);
+        this.$notify.error('ไม่สามารถปรับจำนวนสินค้าได้');
+      }
+    },
+    
+    async handleAutoFix(actions) {
+      try {
+        let removedCount = 0;
+        let adjustedCount = 0;
+        
+        for (const action of actions) {
+          if (action.type === 'remove') {
+            await this.$options.mixins[0].methods.removeItem.call(this, action.item);
+            removedCount++;
+          } else if (action.type === 'adjust') {
+            // Update quantity for low stock items
+            const updatedOrders = this.orders.map(order => {
+              if ((order.product?._id || order.product) === (action.item.product?._id || action.item.product)) {
+                return { ...order, quantity: action.newQuantity };
+              }
+              return order;
+            });
+            
+            await api.put('/orders/', {
+              items: updatedOrders
+                .filter(order => order && order.product && order.quantity > 0)
+                .map(order => ({
+                  product: order.product._id || order.product,
+                  quantity: order.quantity,
+                  price: order.price
+                }))
+            });
+            adjustedCount++;
+          }
+        }
+        
+        await this.$options.mixins[0].methods.fetchCartItems.call(this);
+        
+        let message = 'แก้ไขสำเร็จ: ';
+        if (removedCount > 0) {
+          message += `ลบสินค้า ${removedCount} รายการ `;
+        }
+        if (adjustedCount > 0) {
+          message += `ปรับจำนวน ${adjustedCount} รายการ`;
+        }
+        
+        this.$notify.success(message);
+        this.closeStockIssue();
+      } catch (error) {
+        console.error('Error in auto fix:', error);
+        this.$notify.error('ไม่สามารถแก้ไขอัตโนมัติได้');
       }
     },
   },
