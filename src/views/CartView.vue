@@ -539,6 +539,12 @@ export default {
         this.$router.push('/login');
         return;
       }
+
+      // Show confirmation dialog
+      const confirmCheckout = confirm('คุณต้องการสั่งซื้อสินค้าในตะกร้าหรือไม่?');
+      if (!confirmCheckout) {
+        return;
+      }
       
       // Check for items with null products
       const validItems = this.mergedItems.filter(item => item.product !== null);

@@ -9,6 +9,8 @@ import ProfileView from "../views/ProfileView.vue";
 import EditProductView from "../views/EditProductView.vue";
 import UserManagement from "../components/UserManagement.vue";
 import CouponManagement from "../views/CouponManagement.vue";
+import AllOrdersView from '../views/AllOrdersView.vue';
+import MyOrdersView from '../views/MyOrdersView.vue';
 Vue.use(VueRouter);
 
 const routes = [
@@ -60,12 +62,23 @@ const routes = [
     component: UserManagement,
     meta: { requiresAuth: true, requiresAdmin: true },
   },
-
   {
     path: "/coupons",
     name: "coupons",
     component: CouponManagement,
     meta: { requiresAuth: true, requiresAdmin: true },
+  },
+  {
+    path: '/admin/orders',
+    name: 'all_orders',
+    component: AllOrdersView,
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/my-orders',
+    name: 'my_orders',
+    component: MyOrdersView,
+    meta: { requiresAuth: true }
   },
 ];
 const router = new VueRouter({

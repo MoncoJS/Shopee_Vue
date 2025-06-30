@@ -439,7 +439,7 @@ export default {
         const billData = this.generateBillData(response.data)
         
         // Clear cart after successful checkout
-        await this.clearCart()
+        await this.clearCartAfterCheckout()
         
         return { success: true, billData }
       } catch (error) {
@@ -626,6 +626,22 @@ export default {
       } catch (error) {
         console.error('Error updating low stock quantities:', error)
         return false
+      }
+    },
+    async clearCartAfterCheckout() {
+      try {
+        // Clear the cart by updating with empty items array (no stock restoration needed after successful checkout)
+        await api.put('/orders/', {
+          items: []
+        })
+        
+        // Clear local data
+        this.orders = []
+        this.appliedCoupon = null
+        this.couponCode = ''
+      } catch (error) {
+        console.error('Error clearing cart after checkout:', error)
+        throw error
       }
     },
   }
