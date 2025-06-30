@@ -23,6 +23,12 @@ export default {
       }
       
       this.orders.forEach(item => {
+        // Check if item and item.product exist before accessing properties
+        if (!item || !item.product) {
+          console.warn('Skipping invalid item:', item)
+          return
+        }
+        
         // item.product could be an object or just an ID
         const productId = item.product._id || item.product
         const key = `${productId}_${item.price}`
@@ -137,6 +143,16 @@ export default {
       }
     },
     getProductInfo(item) {
+      // Add null check for item
+      if (!item) {
+        return { 
+          _id: null,
+          name: 'Unknown Product', 
+          img: null,
+          price: 0
+        }
+      }
+      
       // If item.product is already populated (object), use it directly
       if (item.product && typeof item.product === 'object' && item.product._id) {
         return {
@@ -168,14 +184,22 @@ export default {
       }
     },
     getItemId(item) {
+      if (!item || !item.product) {
+        return 'unknown_0'
+      }
       const productId = item.product._id || item.product
       return `${productId}_${item.price}`
     },
     async increaseQty(item) {
+      if (!item || !item.product) {
+        console.warn('Cannot increase quantity: invalid item', item)
+        return
+      }
+      
       try {
         // Update the local quantity first
         const updatedOrders = this.orders.map(order => {
-          if ((order.product._id || order.product) === item.product) {
+          if (order.product && (order.product._id || order.product) === item.product) {
             return { ...order, quantity: order.quantity + 1 }
           }
           return order
@@ -183,11 +207,13 @@ export default {
         
         // Update the entire cart
         await api.put('/orders/', {
-          items: updatedOrders.map(order => ({
-            product: order.product._id || order.product,
-            quantity: order.quantity,
-            price: order.price
-          }))
+          items: updatedOrders
+            .filter(order => order && order.product) // Ensure order and product exist
+            .map(order => ({
+              product: order.product._id || order.product,
+              quantity: order.quantity,
+              price: order.price
+            }))
         })
         
         await this.fetchCartItems()
@@ -196,12 +222,15 @@ export default {
       }
     },
     async decreaseQty(item) {
-      if (item.quantity <= 1) return
+      if (!item || !item.product || item.quantity <= 1) {
+        console.warn('Cannot decrease quantity: invalid item or quantity <= 1', item)
+        return
+      }
       
       try {
         // Update the local quantity first
         const updatedOrders = this.orders.map(order => {
-          if ((order.product._id || order.product) === item.product) {
+          if (order.product && (order.product._id || order.product) === item.product) {
             return { ...order, quantity: Math.max(1, order.quantity - 1) }
           }
           return order
@@ -209,11 +238,13 @@ export default {
         
         // Update the entire cart
         await api.put('/orders/', {
-          items: updatedOrders.map(order => ({
-            product: order.product._id || order.product,
-            quantity: order.quantity,
-            price: order.price
-          }))
+          items: updatedOrders
+            .filter(order => order && order.product) // Ensure order and product exist
+            .map(order => ({
+              product: order.product._id || order.product,
+              quantity: order.quantity,
+              price: order.price
+            }))
         })
         
         await this.fetchCartItems()
@@ -222,6 +253,11 @@ export default {
       }
     },
     async removeItem(item) {
+      if (!item || !item.product) {
+        console.warn('Cannot remove item: invalid item', item)
+        return
+      }
+      
       try {
         console.log('Removing item:', item) // Debug log
         
@@ -232,6 +268,7 @@ export default {
         
         // Remove items for this product from the cart
         const remainingOrders = this.orders.filter(order => {
+          if (!order.product) return false
           const orderProductId = order.product._id || order.product
           console.log('Comparing:', orderProductId, 'with:', productId) // Debug log
           return orderProductId !== productId
@@ -241,6 +278,7 @@ export default {
         
         // Get items to restore stock for
         const itemsToRestore = this.orders.filter(order => {
+          if (!order.product) return false
           const orderProductId = order.product._id || order.product
           return orderProductId === productId
         }).map(order => ({
@@ -261,11 +299,13 @@ export default {
         // Update the cart with remaining items
         console.log('Updating cart with remaining items...')
         await api.put('/orders/', {
-          items: remainingOrders.map(order => ({
-            product: order.product._id || order.product,
-            quantity: order.quantity,
-            price: order.price
-          }))
+          items: remainingOrders
+            .filter(order => order && order.product) // Ensure order and product exist
+            .map(order => ({
+              product: order.product._id || order.product,
+              quantity: order.quantity,
+              price: order.price
+            }))
         })
         
         console.log('Fetching updated cart...')
@@ -278,10 +318,12 @@ export default {
     async clearCart() {
       try {
         // Restore stock for all items
-        const itemsToRestore = this.orders.map(order => ({
-          product: order.product._id || order.product,
-          quantity: order.quantity
-        }))
+        const itemsToRestore = this.orders
+          .filter(order => order && order.product) // Filter out invalid orders
+          .map(order => ({
+            product: order.product._id || order.product,
+            quantity: order.quantity
+          }))
         
         if (itemsToRestore.length > 0) {
           await api.post('/orders/restore', {
